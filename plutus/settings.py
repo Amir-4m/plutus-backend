@@ -34,6 +34,9 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost', cast=Csv())
 
 INSTALLED_APPS = [
     'apps.strategies',
+    'apps.assets',
+    'apps.trader_bots',
+    'apps.orders',
 
     'django.contrib.admin',
     'django.contrib.auth',
