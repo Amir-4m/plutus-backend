@@ -14,7 +14,6 @@ from pathlib import Path
 from celery.schedules import crontab
 from decouple import config, Csv
 
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -37,6 +36,8 @@ INSTALLED_APPS = [
     'apps.assets',
     'apps.trader_bots',
     'apps.orders',
+    'apps.alerts',
+    'apps.telegram_bot',
 
     'django.contrib.admin',
     'django.contrib.auth',
@@ -77,7 +78,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'plutus.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
@@ -92,15 +92,18 @@ DATABASES = {
     }
 }
 
-
 CACHES = {
     'default': {
-        'BACKEND': config("CACHE_BACKEND", default='django.core.cache.backends.locmem.LocMemCache'),
-        'LOCATION': config("CACHE_HOST"),
-        'KEY_PREFIX': 'ADMOODCORE',
+        'BACKEND': config('CACHE_BACKEND', default='django.core.cache.backends.locmem.LocMemCache'),
+        'LOCATION': config('CACHE_HOST', default=''),
+        'KEY_PREFIX': 'PLUTUS',
     },
+    'session': {
+        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+        'LOCATION': '/tmp/plutus_session_cache',
+        'TIMEOUT': 2 * 86400,
+    }
 }
-
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
 
@@ -138,7 +141,6 @@ USE_L10N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
@@ -152,7 +154,6 @@ LOG_DIR = BASE_DIR / 'logs'
 LOCALE_PATHS = [
     BASE_DIR / 'apps/locale',
 ]
-
 
 LOGGING = {
     'version': 1,
@@ -212,3 +213,9 @@ LOGGING = {
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+TELEGRAM_BOT = {
+    'TOKEN': config('TELEGRAM_BOT_TOKEN', default=''),
+    'MODE': config('TELEGRAM_BOT_MODE', default='POLLING'),
+    'WEBHOOK_SITE': '',
+}
