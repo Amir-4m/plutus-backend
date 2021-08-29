@@ -27,8 +27,8 @@ def update_order_task(bot_id, order_id):
 
 
 @shared_task()
-def close_position(bot_id, code_name, order_id=None):
-    logger.info(f'closing position, bot {bot_id}, {code_name}, {order_id}')
+def close_position(bot_id, code_name):
+    logger.info(f'closing position, bot {bot_id}, {code_name}')
 
     bot = TraderBot.objects.get(id=bot_id)
     response = AaxService(
@@ -37,8 +37,11 @@ def close_position(bot_id, code_name, order_id=None):
     ).close_position(code_name)
     logger.info(f'closing position, response {str(response)}')
     if response['code'] == 1:
-        if order_id:
-            FuturesOrder.objects.filter(order_id=order_id).update(is_active=False)
+        FuturesOrder.objects.filter(
+            user=bot.user,
+            asset__exchange=bot.exchange,
+            asset__code_name=code_name,
+            is_active=True).update(is_active=False)
 
 
 @shared_task()
