@@ -17,7 +17,7 @@ bot = Bot(
 
 
 @shared_task()
-def send_alert(strategy_alert_id, log):
+def send_telegram_alert(strategy_alert_id, log):
     try:
         alert = StrategyAlert.objects.get(id=strategy_alert_id, is_enable=True)
         bot.send_message(

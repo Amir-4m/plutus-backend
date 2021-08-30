@@ -14,7 +14,7 @@ class Platform(models.Model):
 
     created_time = models.DateTimeField(_("created time"), auto_now_add=True)
     updated_time = models.DateTimeField(_("updated time"), auto_now=True)
-    platform = models.CharField(_('platform'), choices=PLATFORM_LIST, max_length=50, default=PLATFORM_EMAIL)
+    platform_type = models.CharField(_('platform'), choices=PLATFORM_LIST, max_length=50, default=PLATFORM_EMAIL)
     is_enable = models.BooleanField(_('is enable'), default=True)
     extra_data = models.JSONField(_('extra data'), default=dict)
 
@@ -27,6 +27,7 @@ class StrategyAlert(models.Model):
     alert_key = models.UUIDField(_('alert key'), default=uuid.uuid4, unique=True, editable=False)
     is_enable = models.BooleanField(_('is enable'), default=False)
     extra_data = models.JSONField(_('extra data'), default=dict)
+    trade = models.BooleanField(_('trade permission'), default=False)
 
 
 class AlertLog(models.Model):
