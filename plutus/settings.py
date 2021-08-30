@@ -33,7 +33,7 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost', cast=Csv())
 
 INSTALLED_APPS = [
     'apps.strategies',
-    'apps.assets',
+    'apps.exchanges',
     'apps.trader_bots',
     'apps.orders',
     'apps.alerts',

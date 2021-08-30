@@ -2,7 +2,7 @@ import logging
 
 from celery import shared_task
 
-from apps.assets.models import Asset
+from apps.exchanges.models import Asset, ExchangeFuturesAsset
 from apps.orders.models import FuturesOrder
 from apps.trader_bots.models import TraderBot
 from apps.trader_bots.services import AaxService
@@ -27,7 +27,7 @@ def update_order_task(bot_id, order_id):
 
 
 @shared_task()
-def close_position(bot_id, code_name):
+def close_position(bot_id, code_name, price):
     logger.info(f'closing position, bot {bot_id}, {code_name}')
 
     bot = TraderBot.objects.get(id=bot_id)
@@ -41,14 +41,14 @@ def close_position(bot_id, code_name):
             user=bot.user,
             asset__exchange=bot.exchange,
             asset__code_name=code_name,
-            is_active=True).update(is_active=False)
+            is_active=True).update(is_active=False, close_price=price)
 
 
 @shared_task()
-def create_order_task(bot_id, code_name, exchange, qty, side, leverage):
-    logger.info(f'creating order, bot:{bot_id}, {code_name}, {exchange}, {qty}, {side}, {leverage}')
+def create_order_task(bot_id, code_name, qty, side, leverage):
     bot = TraderBot.objects.get(id=bot_id)
-    asset = Asset.objects.get(code_name=code_name, exchange=exchange)
+    logger.info(f'creating order, bot:{bot_id}, {code_name}, {bot.exchange.title}, {qty}, {side}, {leverage}')
+    asset = ExchangeFuturesAsset.objects.get(code_name=code_name, exchange_id=bot.exchange_id)
     close_position(bot_id, code_name)
     order = AaxService(
         api_key=bot.credential_data['api_key'],

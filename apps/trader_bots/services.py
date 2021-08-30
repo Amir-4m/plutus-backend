@@ -3,160 +3,9 @@ import hmac
 import json
 import time
 import uuid
-
-from django.contrib.auth.models import User
-from apps.orders.models import FuturesOrder
-
 import requests
 
-# class KucoinFuturesService(object):
-#     def __init__(self, sandbox=False):
-#         super(KucoinFuturesService, self).__init__()
-#         if sandbox:
-#             self.base_url = 'https://api-sandbox-futures.kucoin.com'
-#         else:
-#             self.base_url = 'https://api-futures.kucoin.com'
-#
-#     def create_order(self):
-#         # bot_properties = bot.credential_data
-#         endpoint = f'/api/v1/orders'
-#         symbol = 'XBTUSDTM'
-#         api_key = '612a37dcbc85c200065aa39d'
-#         api_version = '2'
-#         api_passphrase = 'testapikey'
-#         api_secret = '78f6c66f-4031-4957-a82a-a67ac4edb2aa'
-#         now = int(time.time() * 1000)
-#         passphrase = base64.b64encode(hmac.new(api_secret.encode('utf-8'), api_passphrase.encode('utf-8'), hashlib.sha256).digest())
-#         order_id = uuid.uuid4()
-#
-#         data = {
-#             "clientOid": str(order_id),
-#             # "leverage": 5,
-#             "side": "buy",
-#             # "stop": "down",
-#             "leverage": 5,
-#             # "stopPrice": 48674,
-#             # "stopPriceType": "MP",
-#             "size": 35,
-#             "symbol": "XBTUSDTM",
-#             "type": "market",
-#         }
-#         str_to_sign = str(now) + 'POST' + endpoint + json.dumps(data)
-#         signature = base64.b64encode(hmac.new(api_secret.encode('utf-8'), str_to_sign.encode('utf-8'), hashlib.sha256).digest())
-#         headers = {
-#             "KC-API-SIGN": signature,
-#             "KC-API-TIMESTAMP": str(now),
-#             "KC-API-KEY": api_key,
-#             "KC-API-PASSPHRASE": passphrase,
-#             "KC-API-KEY-VERSION": api_version
-#         }
-#
-#         response = requests.post(url=f'{self.base_url}{endpoint}', headers=headers, json=data)
-#         print(response.status_code)
-#         print(response.json())
-#
-#     def get_order(self):
-#         # bot_properties = bot.credential_data
-#         endpoint = f'/api/v1/orders/612a8790fa1b4f000614a4aa'
-#         symbol = 'XBTUSDTM'
-#         api_key = '612a37dcbc85c200065aa39d'
-#         api_version = '2'
-#         api_passphrase = 'testapikey'
-#         api_secret = '78f6c66f-4031-4957-a82a-a67ac4edb2aa'
-#         now = int(time.time() * 1000)
-#         passphrase = base64.b64encode(hmac.new(api_secret.encode('utf-8'), api_passphrase.encode('utf-8'), hashlib.sha256).digest())
-#         order_id = uuid.uuid4()
-#
-#         data = {
-#             "clientOid": order_id,
-#             "leverage": 5,
-#             "side": "buy",
-#             "size": 3,
-#             "symbol": "ETHUSDTM",
-#             "type": "market",
-#         }
-#         str_to_sign = str(now) + 'GET' + endpoint
-#         signature = base64.b64encode(hmac.new(api_secret.encode('utf-8'), str_to_sign.encode('utf-8'), hashlib.sha256).digest())
-#         headers = {
-#             "KC-API-SIGN": signature,
-#             "KC-API-TIMESTAMP": str(now),
-#             "KC-API-KEY": api_key,
-#             "KC-API-PASSPHRASE": passphrase,
-#             "KC-API-KEY-VERSION": api_version
-#         }
-#
-#         response = requests.get(url=f'{self.base_url}{endpoint}', headers=headers)
-#         print(response.status_code)
-#         print(response.json())
-#         return response
-#
-#     def get_orders(self):
-#         # bot_properties = bot.credential_data
-#         endpoint = f'/api/v1/orders'
-#         symbol = 'XBTUSDTM'
-#         api_key = '612a37dcbc85c200065aa39d'
-#         api_version = '2'
-#         api_passphrase = 'testapikey'
-#         api_secret = '78f6c66f-4031-4957-a82a-a67ac4edb2aa'
-#         now = int(time.time() * 1000)
-#         passphrase = base64.b64encode(hmac.new(api_secret.encode('utf-8'), api_passphrase.encode('utf-8'), hashlib.sha256).digest())
-#         order_id = uuid.uuid4()
-#
-#         data = {
-#             "clientOid": order_id,
-#             "leverage": 5,
-#             "side": "buy",
-#             "size": 3,
-#             "symbol": "ETHUSDTM",
-#             "type": "market",
-#         }
-#         str_to_sign = str(now) + 'GET' + endpoint
-#         signature = base64.b64encode(hmac.new(api_secret.encode('utf-8'), str_to_sign.encode('utf-8'), hashlib.sha256).digest())
-#         headers = {
-#             "KC-API-SIGN": signature,
-#             "KC-API-TIMESTAMP": str(now),
-#             "KC-API-KEY": api_key,
-#             "KC-API-PASSPHRASE": passphrase,
-#             "KC-API-KEY-VERSION": api_version
-#         }
-#
-#         response = requests.get(url=f'{self.base_url}{endpoint}', headers=headers)
-#         print(response.status_code)
-#         print(response.json())
-#
-#     def get_positions(self):
-#         # bot_properties = bot.credential_data
-#         endpoint = f'/api/v1/positions'
-#         symbol = 'XBTUSDTM'
-#         api_key = '612a37dcbc85c200065aa39d'
-#         api_version = '2'
-#         api_passphrase = 'testapikey'
-#         api_secret = '78f6c66f-4031-4957-a82a-a67ac4edb2aa'
-#         now = int(time.time() * 1000)
-#         passphrase = base64.b64encode(hmac.new(api_secret.encode('utf-8'), api_passphrase.encode('utf-8'), hashlib.sha256).digest())
-#         order_id = uuid.uuid4()
-#
-#         data = {
-#             "clientOid": order_id,
-#             "leverage": 5,
-#             "side": "buy",
-#             "size": 3,
-#             "symbol": "ETHUSDTM",
-#             "type": "market",
-#         }
-#         str_to_sign = str(now) + 'GET' + endpoint
-#         signature = base64.b64encode(hmac.new(api_secret.encode('utf-8'), str_to_sign.encode('utf-8'), hashlib.sha256).digest())
-#         headers = {
-#             "KC-API-SIGN": signature,
-#             "KC-API-TIMESTAMP": str(now),
-#             "KC-API-KEY": api_key,
-#             "KC-API-PASSPHRASE": passphrase,
-#             "KC-API-KEY-VERSION": api_version
-#         }
-#
-#         response = requests.get(url=f'{self.base_url}{endpoint}', headers=headers)
-#         print(response.status_code)
-#         print(response.json())
+from apps.orders.models import FuturesOrder
 
 
 class AaxService(object):
@@ -195,7 +44,7 @@ class AaxService(object):
             return FuturesOrder.objects.create(
                 user=user,
                 asset=asset,
-                open_price=response['data']['marketPrice'],
+                open_price=float(response['data']['marketPrice']),
                 order_id=order_id,
                 side=side,
                 leverage=leverage,
@@ -255,3 +104,24 @@ class AaxService(object):
         }
         response = requests.get('https://api.aax.com/v2/futures/orders', params=params, headers=headers).json()
         return response
+
+
+class TraderBotService(object):
+    @staticmethod
+    def trade_on_strategy(strategies, side, code_name, action, price):
+        from apps.trader_bots.tasks import create_order_task, close_position
+        for strategy in strategies:
+            if action == 'open':
+                create_order_task.delay(
+                    strategy.bot_id,
+                    strategy.contracts,
+                    side,
+                    code_name,
+                    strategy.leverage,
+                )
+            elif action == 'close':
+                close_position.delay(
+                    strategy.bot_id,
+                    code_name,
+                    float(price)
+                )

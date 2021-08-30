@@ -5,4 +5,4 @@ from apps.orders.models import FuturesOrder
 
 @admin.register(FuturesOrder)
 class FuturesOrderAdmin(admin.ModelAdmin):
-    list_display = ('order_id', 'user', 'asset', 'is_active')
+    list_display = ('order_id', 'user', 'exchange_futures_asset', 'is_active')

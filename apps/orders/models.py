@@ -1,10 +1,9 @@
-import uuid
 
 from django.contrib.auth.models import User
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
 
-from apps.assets.models import Asset
+from apps.exchanges.models import ExchangeFuturesAsset
 
 
 class FuturesOrder(models.Model):
@@ -19,7 +18,7 @@ class FuturesOrder(models.Model):
     created_time = models.DateTimeField(_("created time"), auto_now_add=True)
     updated_time = models.DateTimeField(_("updated time"), auto_now=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='futures_orders')
-    asset = models.ForeignKey(Asset, on_delete=models.PROTECT, related_name='futures_orders')
+    exchange_futures_asset = models.ForeignKey(ExchangeFuturesAsset, on_delete=models.PROTECT, related_name='futures_orders')
     open_price = models.FloatField(_('open price'))
     close_price = models.FloatField(_('close price'), null=True, blank=True)
     leverage = models.IntegerField(_('leverage'), default=1)
