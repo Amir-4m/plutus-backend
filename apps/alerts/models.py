@@ -27,7 +27,6 @@ class StrategyAlert(models.Model):
     alert_key = models.UUIDField(_('alert key'), default=uuid.uuid4, unique=True, editable=False)
     is_enable = models.BooleanField(_('is enable'), default=False)
     extra_data = models.JSONField(_('extra data'), default=dict)
-    trade = models.BooleanField(_('trade permission'), default=False)
 
 
 class AlertLog(models.Model):

@@ -20,3 +20,5 @@ class UserStrategy(models.Model):
     strategy = models.ForeignKey(Strategy, on_delete=models.CASCADE, related_name='user_strategies')
     due_date = models.DateField(_('due date'))
     is_enable = models.BooleanField(default=False)
+    trade = models.BooleanField(_('trade permission'), default=False)
+

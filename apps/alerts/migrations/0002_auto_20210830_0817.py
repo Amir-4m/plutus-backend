@@ -5,7 +5,6 @@ import uuid
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('alerts', '0001_initial'),
     ]
@@ -30,5 +29,9 @@ class Migration(migrations.Migration):
             model_name='strategyalert',
             name='is_enable',
             field=models.BooleanField(default=False, verbose_name='is enable'),
+        ),
+        migrations.RemoveField(
+            model_name='strategyalert',
+            name='trade',
         ),
     ]
