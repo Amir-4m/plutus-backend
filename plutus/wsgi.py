@@ -11,8 +11,8 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
-from whitenoise import WhiteNoise
-from settings import STATIC_ROOT
+from whitenoise import WhiteNoise   
+from .settings import STATIC_ROOT
 
 
 
