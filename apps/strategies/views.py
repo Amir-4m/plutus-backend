@@ -50,7 +50,7 @@ class WebHookView(View):
             TraderBotService.trade_on_strategy(
                 user_strategies,
                 payload['side'],
-                payload['code_name'],
+                exchange_asset.code_name,
                 payload['action'],
                 payload['price']
             )
