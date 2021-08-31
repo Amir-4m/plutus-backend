@@ -15,6 +15,9 @@ services:
       # - POSTGRES_DB=app
       # - POSTGRES_USER=postgres
       # - POSTGRES_PASSWORD=supersecretpassword
+      - CELERY_USER=admin
+      - CELERY_PASS=mypass
+      - CELERY_HOST=rabbit
       - DB_HOST=db
       - DB_NAME=app
       - DB_USER=postgres
@@ -39,6 +42,9 @@ services:
       # - POSTGRES_DB=app
       # - POSTGRES_USER=postgres
       # - POSTGRES_PASSWORD=supersecretpassword
+      - CELERY_USER=admin
+      - CELERY_PASS=mypass
+      - CELERY_HOST=rabbit
       - DB_HOST=db
       - DB_NAME=app
       - DB_USER=postgres
@@ -86,6 +92,9 @@ services:
     environment:
       - RABBITMQ_DEFAULT_USER=admin
       - RABBITMQ_DEFAULT_PASS=mypass
+      - CELERY_USER=admin
+      - CELERY_PASS=mypass
+      - CELERY_HOST=rabbit
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -98,6 +107,9 @@ services:
     volumes:
       - .:/app
     environment:
+      - CELERY_USER=admin
+      - CELERY_PASS=mypass
+      - CELERY_HOST=rabbit
       - DB_HOST=db
       - DB_NAME=app
       - DB_USER=postgres
