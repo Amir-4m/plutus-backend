@@ -91,7 +91,11 @@ DATABASES = {
         'PORT': config("DB_PORT", default=''),
     }
 }
-
+CELERY_BROKER_URL = 'amqp://%(USER)s:%(PASS)s@%(HOST)s' % {
+    'USER': config('CELERY_USER', default=''),
+    'PASS': config('CELERY_PASS', default=''),
+    'HOST': config('CELERY_HOST', default=''),
+}
 CACHES = {
     'default': {
         'BACKEND': config('CACHE_BACKEND', default='django.core.cache.backends.locmem.LocMemCache'),
