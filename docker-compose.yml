@@ -21,7 +21,7 @@ services:
       - DB_PASS=supersecretpassword
       - SECRET_KEY=secretkey
       - CACHE_HOST=localhost
-      - DEBUG=True
+      - DEBUG=False
       - ALLOWED_HOSTS=*
       - TELEGRAM_BOT_TOKEN=1916678554:AAEZCPxzlMvqk9w7FCqF6Z2_mwbPb2wrHec
 
