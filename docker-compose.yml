@@ -11,14 +11,14 @@ services:
     command: >
       sh -c "python3 manage.py migrate && python3 manage.py runserver 0.0.0.0:8000"
     environment:
-      - SECRET_KEY: "testkey"
-      - POSTGRES_DB: "app"
-      - POSTGRES_USER: "postgres"
-      - POSTGRES_PASSWORD: "supersecretpassword"
-      - CACHE_HOST: "localhost"
-      - DEBUG: "True"
-      - ALLOWED_HOSTS: "*"
-      - TELEGRAM_BOT_TOKEN: "1916678554:AAEZCPxzlMvqk9w7FCqF6Z2_mwbPb2wrHec"
+      - SECRET_KEY: testkey
+      - POSTGRES_DB: app
+      - POSTGRES_USER: postgres
+      - POSTGRES_PASSWORD: supersecretpassword
+      - CACHE_HOST: localhost
+      - DEBUG: True
+      - ALLOWED_HOSTS: *
+      - TELEGRAM_BOT_TOKEN: 1916678554:AAEZCPxzlMvqk9w7FCqF6Z2_mwbPb2wrHec
 
   telegram-bot:
     build:
