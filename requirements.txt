@@ -10,4 +10,3 @@ celery>=4.4, <4.5
 requests
 Pillow
 python-telegram-bot==12.5.1
-environ
