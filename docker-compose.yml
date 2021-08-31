@@ -17,7 +17,7 @@ services:
       - POSTGRES_PASSWORD=supersecretpassword
       - CACHE_HOST=localhost
       - DEBUG=True
-      - ALLOWED_HOSTS = *
+      - ALLOWED_HOSTS=*
       - TELEGRAM_BOT_TOKEN=1916678554:AAEZCPxzlMvqk9w7FCqF6Z2_mwbPb2wrHec
 
   telegram-bot:
