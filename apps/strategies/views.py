@@ -1,3 +1,4 @@
+import json
 import logging
 
 from django.db import transaction
@@ -21,7 +22,7 @@ class WebHookView(View):
 
     @transaction.atomic
     def post(self, request):
-        payload = request.body
+        payload = json.loads(request.body)
         logger.info(f'webhook called with data: {str(request.body)}')
         strategy_title = payload.get('strategy')
         try:
