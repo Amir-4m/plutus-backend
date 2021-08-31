@@ -101,7 +101,7 @@ services:
 
   celery:
     # image: celery
-    build: ./plutus
+    build: .
     restart: always
     command: celery -A plutus worker -l info
     volumes:
