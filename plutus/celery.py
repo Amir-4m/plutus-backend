@@ -7,7 +7,7 @@ from celery import Celery
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'plutus.settings')
 
 # app = Celery('plutus')
-app = Celery(backend='amqp', broker='amqp://guest:guest@rabbit:5672/')
+app = Celery(backend='amqp', broker='amqp://admin:mypass@rabbit:5672/')
 
 # Using a string here means the worker don't have to serialize
 # the configuration object to child processes.
