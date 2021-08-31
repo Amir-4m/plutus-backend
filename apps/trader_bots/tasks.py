@@ -47,7 +47,7 @@ def close_position(bot_id, code_name, price):
 @shared_task()
 def create_order_task(bot_id, code_name, qty, side, leverage):
     bot = TraderBot.objects.get(id=bot_id)
-    logger.info(f'creating order, bot:{bot_id}, {code_name}, {bot.exchange.title}, {qty}, {side}, {leverage}')
+    logger.info(f'creating order, bot:{bot_id}, {code_name}, {bot.exchange_id}, {qty}, {side}, {leverage}')
     asset = ExchangeFuturesAsset.objects.get(code_name=code_name, exchange_id=bot.exchange_id)
     close_position(bot_id, code_name)
     order = AaxService(
