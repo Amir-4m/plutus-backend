@@ -117,7 +117,8 @@ class TraderBotService(object):
                     code_name,
                     strategy.contracts,
                     side,
-                    strategy.leverage
+                    strategy.leverage,
+                    float(price)
                 )
             elif action == 'close':
                 close_position.delay(
