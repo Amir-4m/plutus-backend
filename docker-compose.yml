@@ -90,6 +90,7 @@ services:
       - DB_NAME=app
       - DB_USER=postgres
       - DB_PASS=supersecretpassword
+      - SECRET_KEY=secretkey
     depends_on:
       - db
       - redis
