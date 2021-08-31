@@ -10,7 +10,8 @@ services:
       - .:/app
     command: >
       sh -c "python3 manage.py migrate && python3 manage.py runserver 0.0.0.0:8000"
-    environment: SECRET_KEY='test-key'
+    environment:
+      - SECRET_KEY='test-key'
       - POSTGRES_DB=app
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=supersecretpassword
