@@ -39,8 +39,8 @@ def close_position(bot_id, code_name, price):
     if response['code'] == 1:
         FuturesOrder.objects.filter(
             user=bot.user,
-            asset__exchange=bot.exchange,
-            asset__code_name=code_name,
+            exchange_futures_asset__exchange=bot.exchange,
+            exchange_futures_asset__code_name=code_name,
             is_active=True).update(is_active=False, close_price=price)
 
 
