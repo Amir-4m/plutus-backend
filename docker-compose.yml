@@ -80,9 +80,9 @@ services:
 
   celery:
     # image: celery
-    build: ./
+    build: ./plutus
     restart: always
-    command: celery -A app worker -l info
+    command: celery -A plutus worker -l info
     volumes:
       - .:/app
     environment:
