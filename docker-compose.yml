@@ -83,8 +83,8 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=supersecretpassword
 
-  # redis:
-  #   image: redis:alpine
+  redis:
+    image: redis:alpine
 
   rabbit:
     hostname: rabbit
@@ -121,6 +121,46 @@ services:
       - db
       - rabbit
       - app
+
+  sentry:
+    image: sentry
+    links:
+      - redis
+      - db
+    ports:
+      - 9000:9000
+    environment:
+      SENTRY_SECRET_KEY: "!!!SECRET!!!"
+      SENTRY_POSTGRES_HOST: db
+      SENTRY_DB_USER: postgres
+      SENTRY_DB_PASSWORD: supersecretpassword
+      SENTRY_REDIS_HOST: redis
+
+  cron:
+    image: sentry
+    links:
+      - redis
+      - db
+    command: "sentry run cron"
+    environment:
+      SENTRY_SECRET_KEY: "!!!SECRET!!!"
+      SENTRY_POSTGRES_HOST: db
+      SENTRY_DB_USER: postgres
+      SENTRY_DB_PASSWORD: supersecretpassword
+      SENTRY_REDIS_HOST: redis
+
+  worker:
+    image: sentry
+    links:
+      - redis
+      - db
+    command: "sentry run worker"
+    environment:
+      SENTRY_SECRET_KEY: "!!!SECRET!!!"
+      SENTRY_POSTGRES_HOST: db
+      SENTRY_DB_USER: postgres
+      SENTRY_DB_PASSWORD: supersecretpassword
+      SENTRY_REDIS_HOST: redis
 
 volumes:
   pgdata: {}
