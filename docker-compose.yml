@@ -5,12 +5,12 @@ services:
     build:
       context: .
     ports:
-      - "8000:8000"
+      - "80:80"
     volumes:
       - .:/app
       - static:/app/static
     command: >
-      sh -c "python3 manage.py migrate && python3 manage.py runserver 0.0.0.0:8000"
+      sh -c "python3 manage.py migrate && python3 manage.py runserver 0.0.0.0:80"
     environment:
       # - SECRET_KEY=testkey
       # - POSTGRES_DB=app

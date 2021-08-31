@@ -19,7 +19,7 @@ RUN pip install -r requirements.txt
 RUN  apt -y autoremove && apt autoclean -y
 
 
-EXPOSE 8000
+EXPOSE 80
 
 #CMD python manage.py makemigrations && python manage.py migrate && daphne emdad.asgi:application -b 0.0.0.0 -p 8000
 # CMD python manage.py makemigrations && python manage.py migrate && python manage.py runserver 0.0.0.0:8000
