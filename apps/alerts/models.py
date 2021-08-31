@@ -14,7 +14,7 @@ class Platform(models.Model):
 
     created_time = models.DateTimeField(_("created time"), auto_now_add=True)
     updated_time = models.DateTimeField(_("updated time"), auto_now=True)
-    platform_type = models.CharField(_('platform'), choices=PLATFORM_LIST, max_length=50, default=PLATFORM_EMAIL)
+    platform_type = models.IntegerField(_('platform'), choices=PLATFORM_LIST, default=PLATFORM_EMAIL)
     is_enable = models.BooleanField(_('is enable'), default=True)
     extra_data = models.JSONField(_('extra data'), default=dict)
 
