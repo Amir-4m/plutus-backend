@@ -97,10 +97,14 @@ CELERY_BROKER_URL = 'amqp://%(USER)s:%(PASS)s@%(HOST)s' % {
     'HOST': config('CELERY_HOST', default=''),
 }
 CACHES = {
+    # 'default': {
+    #     'BACKEND': config('CACHE_BACKEND', default='django.core.cache.backends.locmem.LocMemCache'),
+    #     'LOCATION': config('CACHE_HOST', default=''),
+    #     'KEY_PREFIX': 'PLUTUS',
+    # },
     'default': {
-        'BACKEND': config('CACHE_BACKEND', default='django.core.cache.backends.locmem.LocMemCache'),
-        'LOCATION': config('CACHE_HOST', default=''),
-        'KEY_PREFIX': 'PLUTUS',
+        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
+        'LOCATION': 'cache:11211',
     },
     'session': {
         'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',

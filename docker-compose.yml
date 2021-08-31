@@ -11,12 +11,17 @@ services:
     command: >
       sh -c "python3 manage.py migrate && python3 manage.py runserver 0.0.0.0:8000"
     environment:
-      - SECRET_KEY=testkey
-      - POSTGRES_DB=app
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=supersecretpassword
+      # - SECRET_KEY=testkey
+      # - POSTGRES_DB=app
+      # - POSTGRES_USER=postgres
+      # - POSTGRES_PASSWORD=supersecretpassword
+      - DB_HOST=db
+      - DB_NAME=app
+      - DB_USER=postgres
+      - DB_PASS=supersecretpassword
+      - SECRET_KEY=secretkey
       - CACHE_HOST=localhost
-      - DEBUG=True
+      - DEBUG=False
       - ALLOWED_HOSTS=*
       - TELEGRAM_BOT_TOKEN=1916678554:AAEZCPxzlMvqk9w7FCqF6Z2_mwbPb2wrHec
 
@@ -29,6 +34,28 @@ services:
       - .:/app
     command: >
       sh -c "python3 manage.py initiate_telegram_bot"
+    environment:
+      # - SECRET_KEY=testkey
+      # - POSTGRES_DB=app
+      # - POSTGRES_USER=postgres
+      # - POSTGRES_PASSWORD=supersecretpassword
+      - DB_HOST=db
+      - DB_NAME=app
+      - DB_USER=postgres
+      - DB_PASS=supersecretpassword
+      - SECRET_KEY=secretkey
+      - CACHE_HOST=localhost
+      - DEBUG=False
+      - ALLOWED_HOSTS=*
+      - TELEGRAM_BOT_TOKEN=1916678554:AAEZCPxzlMvqk9w7FCqF6Z2_mwbPb2wrHec
+
+  cache:
+    image: memcached
+    ports:
+      - "11211:11211"
+    entrypoint:
+      - memcached
+      - -m 64
 
   # environment:
   #   - DB_HOST=db
@@ -41,26 +68,46 @@ services:
 
   db:
     image: postgres:10-alpine
+    restart: on-failure
+    volumes:
+      - pgdata:/var/lib/postgresql/data/
     environment:
       - POSTGRES_DB=app
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=supersecretpassword
 
-  redis:
-    image: redis:alpine
+  # redis:
+  #   image: redis:alpine
+
+  rabbit:
+    hostname: rabbit
+    restart: on-failure
+    image: rabbitmq:3-management
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=mypass
+    ports:
+      - "5672:5672"
+      - "15672:15672"
 
   celery:
-    image: celery
+    # image: celery
+    build: ./plutus
     restart: always
-    command: celery -A app worker -l info
+    command: celery -A plutus worker -l info
     volumes:
-      - ./app:/app
+      - .:/app
     environment:
       - DB_HOST=db
       - DB_NAME=app
       - DB_USER=postgres
       - DB_PASS=supersecretpassword
+      - SECRET_KEY=secretkey
+      - TELEGRAM_BOT_TOKEN=1916678554:AAEZCPxzlMvqk9w7FCqF6Z2_mwbPb2wrHec
     depends_on:
       - db
-      - redis
+      - rabbit
       - app
+
+volumes:
+  pgdata: {}
