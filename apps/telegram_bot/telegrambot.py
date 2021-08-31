@@ -101,6 +101,7 @@ def create_alert(bot, update, session=None):
     user = session.get("user")
     text = update.message.text
     try:
+        logger.info(f'setting alert for {text}, {type(text)}')
         alert = StrategyAlert.objects.get(alert_key=text)
         alert.is_enable = True
         alert.extra_data['telegram_user_id'] = user.user_id
