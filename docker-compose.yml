@@ -68,15 +68,27 @@ services:
 
   db:
     image: postgres:10-alpine
-    # volumes:
-    #   - postgres_data:/var/lib/postgresql/data/
+    restart: on-failure
+    volumes:
+      - pgdata:/var/lib/postgresql/data/
     environment:
       - POSTGRES_DB=app
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=supersecretpassword
 
-  redis:
-    image: redis:alpine
+  # redis:
+  #   image: redis:alpine
+
+  rabbit:
+    hostname: rabbit
+    restart: on-failure
+    image: rabbitmq:3-management
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=mypass
+    ports:
+      - "5672:5672"
+      - "15672:15672"
 
   celery:
     # image: celery
@@ -94,5 +106,8 @@ services:
       - TELEGRAM_BOT_TOKEN=1916678554:AAEZCPxzlMvqk9w7FCqF6Z2_mwbPb2wrHec
     depends_on:
       - db
-      - redis
+      - rabbit
       - app
+
+volumes:
+  pgdata: {}
