@@ -114,10 +114,10 @@ class TraderBotService(object):
             if action == 'open':
                 create_order_task.delay(
                     strategy.trader_bot.id,
+                    code_name,
                     strategy.contracts,
                     side,
-                    code_name,
-                    strategy.leverage,
+                    strategy.leverage
                 )
             elif action == 'close':
                 close_position.delay(
