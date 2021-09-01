@@ -57,7 +57,7 @@ def dispatcher(bot, update, session=None):
         try:
             logs = AlertLog.objects.filter(
                 strategy_alert__extra_data__contains={'telegram_user_id': user.user_id},
-            )
+            )[:15]
             if logs.count() > 0:
                 t = Template(texts.ALERT_LIST)
                 c = Context(dict(logs=logs))
