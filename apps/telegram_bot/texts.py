@@ -26,17 +26,12 @@ No alert has been found with this alert key.
 ALERT_LIST = """
 {% for alert in logs %}
 Alert datetime: {{alert.created_time | date:'Y-m-d H:i'}}
-
 Log: {{ alert.log }}
-
-Key: {{ strategy_alert.alert_key }}
-
- 
+Key: {{ alert.strategy_alert.alert_key }}
  {% if not forloop.last %}
  _________________________________
  {% endif %} 
 {% endfor %}
-
 """
 NO_ALERT_EXISTS = """
 You have no logs or alerts
