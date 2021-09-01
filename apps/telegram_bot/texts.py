@@ -26,7 +26,7 @@ No alert has been found with this alert key.
 ALERT_LIST = """
 {% for alert in logs %}
 Alert datetime: {{alert.created_time | date:'Y-m-d H:i'}}
-Log: {{ alert.log }}
+{{ alert.log }}
 Key: {{ alert.strategy_alert.alert_key }}
  {% if not forloop.last %}
  _________________________________
