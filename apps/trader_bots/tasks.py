@@ -53,6 +53,6 @@ def create_order_task(bot_id, code_name, qty, side, leverage, price):
     order = AaxService(
         api_key=bot.credential_data['api_key'],
         api_secret=bot.credential_data['api_secret']
-    ).create_order(asset, qty, side, leverage, bot.user)
+    ).create_order(asset, qty, side, leverage, bot.user, bot.exchange)
     logger.info(f'creating order, response {str(order)}')
     update_order_task.apply_async(args=(bot_id, order.order_id), countdown=3)

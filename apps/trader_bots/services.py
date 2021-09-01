@@ -13,7 +13,7 @@ class AaxService(object):
         self.api_key = api_key
         self.api_secret = api_secret
 
-    def create_order(self, asset, qty, side, leverage, user):
+    def create_order(self, asset, qty, side, leverage, user, exchange):
         verb = 'POST'
         path = '/v2/futures/orders'
         nonce = str(int(1000 * time.time()))
@@ -43,7 +43,8 @@ class AaxService(object):
         if response['code'] == 1:
             return FuturesOrder.objects.create(
                 user=user,
-                asset=asset,
+                exchange_futures_asset__code_name=asset,
+                exchange_futures_asset__exchange=exchange,
                 open_price=float(response['data']['marketPrice']),
                 order_id=order_id,
                 side=side,
