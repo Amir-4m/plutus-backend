@@ -15,6 +15,9 @@ class Strategy(models.Model):
     offer_price = models.FloatField(_('offer price'), null=True, blank=True)
     is_enable = models.BooleanField(_('is enable?'), default=True)
 
+    def __repr__(self):
+        return f'{self.id}-{self.title}'
+
 
 class UserStrategy(models.Model):
     created_time = models.DateTimeField(_("created time"), auto_now_add=True)
@@ -27,3 +30,6 @@ class UserStrategy(models.Model):
     trader_bot = models.ForeignKey(TraderBot, on_delete=models.PROTECT, related_name='user_strategies', null=True, blank=True)
     leverage = models.IntegerField(_('leverage'), default=1)
     contracts = models.FloatField(_('contract'), default=1)
+
+    def __repr__(self):
+        return f'{self.id}-{self.user.email}-{self.strategy.title}'

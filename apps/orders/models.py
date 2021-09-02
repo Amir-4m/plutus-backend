@@ -1,4 +1,3 @@
-
 from django.contrib.auth.models import User
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
@@ -27,3 +26,5 @@ class FuturesOrder(models.Model):
     is_active = models.BooleanField(_('is active'), default=True)
     logs = models.TextField(_('logs'), null=True, blank=True)
 
+    def __repr__(self):
+        return f'{self.user.email}-{self.exchange_futures_asset.asset.symbol}'
