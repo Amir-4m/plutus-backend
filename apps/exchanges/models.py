@@ -13,8 +13,8 @@ class Asset(models.Model):
     symbol = models.CharField(_('symbol'), max_length=50, unique=True)
     ascending_trend = models.BooleanField(_('is in an ascending trend?'), default=True)
 
-    def __repr__(self):
-        return f'{self.id}-{self.symbol}'
+    def __str__(self):
+        return f'{self.symbol}'
 
 
 class Exchange(models.Model):
@@ -25,7 +25,7 @@ class Exchange(models.Model):
     futures_assets = models.ManyToManyField(Asset, related_name='exchanges', through='ExchangeFuturesAsset')
     is_enable = models.BooleanField(_('is enable'), default=True)
 
-    def __repr__(self):
+    def __str__(self):
         return f'{self.id}-{self.title}'
 
 
@@ -39,5 +39,5 @@ class ExchangeFuturesAsset(models.Model):
     class Meta:
         unique_together = ('exchange', 'asset', 'code_name')
 
-    def __repr__(self):
+    def __str__(self):
         return f'{self.exchange.title}-{self.asset.symbol}'

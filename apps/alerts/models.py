@@ -18,7 +18,7 @@ class Platform(models.Model):
     is_enable = models.BooleanField(_('is enable'), default=True)
     extra_data = models.JSONField(_('extra data'), default=dict)
 
-    def __repr__(self):
+    def __str__(self):
         return f'{self.platform_type}'
 
 
@@ -31,7 +31,7 @@ class StrategyAlert(models.Model):
     is_enable = models.BooleanField(_('is enable'), default=False)
     extra_data = models.JSONField(_('extra data'), default=dict)
 
-    def __repr__(self):
+    def __str__(self):
         return f'{self.id}-{self.user_strategy}-{self.platform}'
 
 
@@ -40,5 +40,5 @@ class AlertLog(models.Model):
     strategy_alert = models.ForeignKey(StrategyAlert, related_name='logs', on_delete=models.CASCADE)
     log = models.TextField(_('log'), null=True, blank=True)
 
-    def __repr__(self):
+    def __str__(self):
         return f'{self.id}-{self.strategy_alert}'

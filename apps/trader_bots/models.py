@@ -15,5 +15,5 @@ class TraderBot(models.Model):
     class Meta:
         unique_together = ('user', 'exchange')
 
-    def __repr__(self):
+    def __str__(self):
         return f'{self.id}-{self.user.email}-{self.exchange.title}'

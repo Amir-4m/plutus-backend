@@ -15,7 +15,7 @@ class Strategy(models.Model):
     offer_price = models.FloatField(_('offer price'), null=True, blank=True)
     is_enable = models.BooleanField(_('is enable?'), default=True)
 
-    def __repr__(self):
+    def __str__(self):
         return f'{self.id}-{self.title}'
 
 
@@ -31,5 +31,5 @@ class UserStrategy(models.Model):
     leverage = models.IntegerField(_('leverage'), default=1)
     contracts = models.FloatField(_('contract'), default=1)
 
-    def __repr__(self):
+    def __str__(self):
         return f'{self.id}-{self.user.email}-{self.strategy.title}'

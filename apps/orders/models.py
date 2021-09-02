@@ -26,5 +26,5 @@ class FuturesOrder(models.Model):
     is_active = models.BooleanField(_('is active'), default=True)
     logs = models.TextField(_('logs'), null=True, blank=True)
 
-    def __repr__(self):
+    def __str__(self):
         return f'{self.user.email}-{self.exchange_futures_asset.asset.symbol}'
