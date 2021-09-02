@@ -32,12 +32,14 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost', cast=Csv())
 # Application definition
 
 INSTALLED_APPS = [
+    'apps.authentications',
     'apps.strategies',
     'apps.exchanges',
     'apps.trader_bots',
     'apps.orders',
     'apps.alerts',
     'apps.telegram_bot',
+    'rest_framework',
 
     'django.contrib.admin',
     'django.contrib.auth',
@@ -130,6 +132,10 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'apps.authentications.backends.EmailAuthBackend',
+]
 
 SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
@@ -137,6 +143,20 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=config('REFRESH_TOKEN_LIFETIME_DAYS', default=90, cast=int)),
 }
 
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'EXCEPTION_HANDLER': 'apps.utils.utils.custom_exception_handler',
+    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.OrderingFilter',
+        'rest_framework.filters.SearchFilter'
+    ]
+
+}
 # Internationalization
 # https://docs.djangoproject.com/en/3.2/topics/i18n/
 
