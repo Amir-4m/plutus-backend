@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import hmac
 import json
@@ -8,12 +9,92 @@ import requests
 from apps.orders.models import FuturesOrder
 
 
+class KucoinFuturesService(object):
+    def __init__(self, api_key, api_secret, api_passphrase, sandbox=False):
+        super(KucoinFuturesService, self).__init__()
+        self.api_key = api_key
+        self.api_secret = api_secret
+        self.api_passphrase = api_passphrase
+
+        if sandbox:
+            self.base_url = 'https://api-sandbox-futures.kucoin.com'
+        else:
+            self.base_url = 'https://api-futures.kucoin.com'
+
+    def create_order(self, asset, qty, side, leverage, user, exchange, price=0):
+        endpoint = f'/api/v1/orders'
+        api_version = '2'
+        now = int(time.time() * 1000)
+        passphrase = base64.b64encode(hmac.new(self.api_secret.encode('utf-8'), self.api_passphrase.encode('utf-8'), hashlib.sha256).digest())
+        order_id = uuid.uuid4()
+
+        data = {
+            "clientOid": str(order_id),
+            "leverage": leverage,
+            "side": side,
+            "size": qty,
+            "symbol": asset.code_name,
+            "type": "market",
+        }
+        str_to_sign = str(now) + 'POST' + endpoint + json.dumps(data)
+        signature = base64.b64encode(hmac.new(self.api_secret.encode('utf-8'), str_to_sign.encode('utf-8'), hashlib.sha256).digest())
+        headers = {
+            "KC-API-SIGN": signature,
+            "KC-API-TIMESTAMP": str(now),
+            "KC-API-KEY": self.api_key,
+            "KC-API-PASSPHRASE": passphrase,
+            "KC-API-KEY-VERSION": api_version
+        }
+
+        response = requests.post(url=f'{self.base_url}{endpoint}', headers=headers, json=data)
+        response.raise_for_status()
+        response = response.json()
+        return FuturesOrder.objects.create(
+            user=user,
+            exchange_futures_asset__code_name=asset,
+            exchange_futures_asset__exchange=exchange,
+            open_price=float(price),
+            order_id=order_id,
+            side=side,
+            leverage=leverage,
+            logs=str(response),
+            is_active=True
+        )
+
+    def close_position(self, code_name):
+        endpoint = f'/api/v1/orders'
+        api_version = '2'
+        now = int(time.time() * 1000)
+        passphrase = base64.b64encode(hmac.new(self.api_secret.encode('utf-8'), self.api_passphrase.encode('utf-8'), hashlib.sha256).digest())
+        order_id = uuid.uuid4()
+
+        data = {
+            "clientOid": str(order_id),
+            "closeOrder": True,
+            "symbol": code_name,
+            "type": "market",
+        }
+        str_to_sign = str(now) + 'POST' + endpoint + json.dumps(data)
+        signature = base64.b64encode(hmac.new(self.api_secret.encode('utf-8'), str_to_sign.encode('utf-8'), hashlib.sha256).digest())
+        headers = {
+            "KC-API-SIGN": signature,
+            "KC-API-TIMESTAMP": str(now),
+            "KC-API-KEY": self.api_key,
+            "KC-API-PASSPHRASE": passphrase,
+            "KC-API-KEY-VERSION": api_version
+        }
+
+        response = requests.post(url=f'{self.base_url}{endpoint}', headers=headers, json=data)
+        response.raise_for_status()
+        return response.json()
+
+
 class AaxService(object):
     def __init__(self, api_key, api_secret):
         self.api_key = api_key
         self.api_secret = api_secret
 
-    def create_order(self, asset, qty, side, leverage, user, exchange):
+    def create_order(self, asset, qty, side, leverage, user, exchange, price=0):
         verb = 'POST'
         path = '/v2/futures/orders'
         nonce = str(int(1000 * time.time()))
@@ -39,13 +120,15 @@ class AaxService(object):
             'X-ACCESS-KEY': self.api_key,
             'X-ACCESS-SIGN': signature,
         }
-        response = requests.post(f'https://api.aax.com/v2/futures/orders', json=data, headers=headers).json()
+        response = requests.post(f'https://api.aax.com/v2/futures/orders', json=data, headers=headers)
+        response.raise_for_status()
+        response = response.json()
         if response['code'] == 1:
             return FuturesOrder.objects.create(
                 user=user,
                 exchange_futures_asset__code_name=asset,
                 exchange_futures_asset__exchange=exchange,
-                open_price=float(response['data']['marketPrice']),
+                open_price=float(price),
                 order_id=order_id,
                 side=side,
                 leverage=leverage,
@@ -68,7 +151,9 @@ class AaxService(object):
             'X-ACCESS-KEY': self.api_key,
             'X-ACCESS-SIGN': signature,
         }
-        response = requests.get('https://api.aax.com/v2/futures/position', params=params, headers=headers).json()
+        response = requests.get('https://api.aax.com/v2/futures/position', params=params, headers=headers)
+        response.raise_for_status()
+        response = response.json()
         return response
 
     def close_position(self, code_name):
@@ -85,7 +170,9 @@ class AaxService(object):
             'X-ACCESS-KEY': self.api_key,
             'X-ACCESS-SIGN': signature,
         }
-        response = requests.post('https://api.aax.com/v2/futures/position/close', json=data, headers=headers).json()
+        response = requests.post('https://api.aax.com/v2/futures/position/close', json=data, headers=headers)
+        response.raise_for_status()
+        response = response.json()
         return response
 
     def get_order(self, order_id):
@@ -103,7 +190,9 @@ class AaxService(object):
             'X-ACCESS-KEY': self.api_key,
             'X-ACCESS-SIGN': signature,
         }
-        response = requests.get('https://api.aax.com/v2/futures/orders', params=params, headers=headers).json()
+        response = requests.get('https://api.aax.com/v2/futures/orders', params=params, headers=headers)
+        response.raise_for_status()
+        response = response.json()
         return response
 
 
