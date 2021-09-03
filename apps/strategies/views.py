@@ -22,8 +22,8 @@ class WebHookView(View):
 
     @transaction.atomic
     def post(self, request):
-        payload = json.loads(request.body)
         logger.info(f'webhook called with data: {str(request.body)}')
+        payload = json.loads(request.body)
         strategy_title = payload.get('strategy')
         try:
             strategy = Strategy.objects.get(title=strategy_title, is_enable=True, asset__symbol=payload['symbol'])
