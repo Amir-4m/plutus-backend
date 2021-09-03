@@ -19,6 +19,7 @@ bot = Bot(
 @shared_task()
 def send_telegram_alert(strategy_alert_id, log):
     try:
+        logger.info(f'sending telegram alert {strategy_alert_id} - {log}')
         alert = StrategyAlert.objects.get(id=strategy_alert_id, is_enable=True)
         bot.send_message(
             text=log,
