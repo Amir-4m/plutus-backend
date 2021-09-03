@@ -11,23 +11,8 @@ services:
       - static:/app/static
     command: >
       sh -c "python3 manage.py migrate && python3 manage.py runserver 0.0.0.0:80"
-    environment:
-      # - SECRET_KEY=testkey
-      # - POSTGRES_DB=app
-      # - POSTGRES_USER=postgres
-      # - POSTGRES_PASSWORD=supersecretpassword
-      - CELERY_USER=admin
-      - CELERY_PASS=mypass
-      - CELERY_HOST=rabbit
-      - DB_HOST=db
-      - DB_NAME=app
-      - DB_USER=postgres
-      - DB_PASS=supersecretpassword
-      - SECRET_KEY=secretkey
-      - CACHE_HOST=localhost
-      - DEBUG=True
-      - ALLOWED_HOSTS=*
-      - TELEGRAM_BOT_TOKEN=1916678554:AAEZCPxzlMvqk9w7FCqF6Z2_mwbPb2wrHec
+    env_file:
+      - .env
 
   telegram-bot:
     build:
@@ -38,24 +23,8 @@ services:
       - .:/app
     command: >
       sh -c "python3 manage.py initiate_telegram_bot"
-    environment:
-      # - SECRET_KEY=testkey
-      # - POSTGRES_DB=app
-      # - POSTGRES_USER=postgres
-      # - POSTGRES_PASSWORD=supersecretpassword
-      - CELERY_USER=admin
-      - CELERY_PASS=mypass
-      - CELERY_HOST=rabbit
-      - DB_HOST=db
-      - DB_NAME=app
-      - DB_USER=postgres
-      - DB_PASS=supersecretpassword
-      - SECRET_KEY=secretkey
-      - CACHE_HOST=localhost
-      - DEBUG=True
-      - ALLOWED_HOSTS=*
-      - TELEGRAM_BOT_TOKEN=1916678554:AAEZCPxzlMvqk9w7FCqF6Z2_mwbPb2wrHec
-
+    env_file:
+      - .env
   cache:
     image: memcached
     ports:
@@ -64,24 +33,13 @@ services:
       - memcached
       - -m 64
 
-  # environment:
-  #   - DB_HOST=db
-  #   - DB_NAME=app
-  #   - DB_USER=postgres
-  #   - DB_PASS=supersecretpassword
-  #   - SECRET_KEY=secretkey
-  # depends_on:
-  #   - db
-
   db:
     image: postgres:10-alpine
     restart: on-failure
     volumes:
       - pgdata:/var/lib/postgresql/data/
-    environment:
-      - POSTGRES_DB=app
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=supersecretpassword
+    env_file:
+      - .env
 
   redis:
     image: redis:alpine
@@ -90,78 +48,62 @@ services:
     hostname: rabbit
     restart: on-failure
     image: rabbitmq:3-management
-    environment:
-      - RABBITMQ_DEFAULT_USER=admin
-      - RABBITMQ_DEFAULT_PASS=mypass
-      - CELERY_USER=admin
-      - CELERY_PASS=mypass
-      - CELERY_HOST=rabbit
+    env_file:
+      - .env
     ports:
       - "5672:5672"
       - "15672:15672"
 
   celery:
-    # image: celery
     build: .
     restart: always
     command: celery -A plutus worker -l info
-    volumes:
-      - .:/app
-    environment:
-      - CELERY_USER=admin
-      - CELERY_PASS=mypass
-      - CELERY_HOST=rabbit
-      - DB_HOST=db
-      - DB_NAME=app
-      - DB_USER=postgres
-      - DB_PASS=supersecretpassword
-      - SECRET_KEY=secretkey
-      - TELEGRAM_BOT_TOKEN=1916678554:AAEZCPxzlMvqk9w7FCqF6Z2_mwbPb2wrHec
+    env_file:
+      - .env
     depends_on:
       - db
       - rabbit
-      - app
 
-  sentry:
-    image: sentry
-    links:
-      - redis
-      - db
-    ports:
-      - 9000:9000
-    environment:
-      SENTRY_SECRET_KEY: "!!!SECRET!!!"
-      SENTRY_POSTGRES_HOST: db
-      SENTRY_DB_USER: postgres
-      SENTRY_DB_PASSWORD: supersecretpassword
-      SENTRY_REDIS_HOST: redis
-
-  cron:
-    image: sentry
-    links:
-      - redis
-      - db
-    command: "sentry run cron"
-    environment:
-      SENTRY_SECRET_KEY: "!!!SECRET!!!"
-      SENTRY_POSTGRES_HOST: db
-      SENTRY_DB_USER: postgres
-      SENTRY_DB_PASSWORD: supersecretpassword
-      SENTRY_REDIS_HOST: redis
-
-  worker:
-    image: sentry
-    links:
-      - redis
-      - db
-    command: "sentry run worker"
-    environment:
-      SENTRY_SECRET_KEY: "!!!SECRET!!!"
-      SENTRY_POSTGRES_HOST: db
-      SENTRY_DB_USER: postgres
-      SENTRY_DB_PASSWORD: supersecretpassword
-      SENTRY_REDIS_HOST: redis
+#  sentry:
+#    image: sentry
+#    links:
+#      - redis
+#      - db
+#    ports:
+#      - 9000:9000
+#    environment:
+#      SENTRY_SECRET_KEY: "!!!SECRET!!!"
+#      SENTRY_POSTGRES_HOST: db
+#      SENTRY_DB_USER: postgres
+#      SENTRY_DB_PASSWORD: supersecretpassword
+#      SENTRY_REDIS_HOST: redis
+#
+#  cron:
+#    image: sentry
+#    links:
+#      - redis
+#      - db
+#    command: "sentry run cron"
+#    environment:
+#      SENTRY_SECRET_KEY: "!!!SECRET!!!"
+#      SENTRY_POSTGRES_HOST: db
+#      SENTRY_DB_USER: postgres
+#      SENTRY_DB_PASSWORD: supersecretpassword
+#      SENTRY_REDIS_HOST: redis
+#
+#  worker:
+#    image: sentry
+#    links:
+#      - redis
+#      - db
+#    command: "sentry run worker"
+#    environment:
+#      SENTRY_SECRET_KEY: "!!!SECRET!!!"
+#      SENTRY_POSTGRES_HOST: db
+#      SENTRY_DB_USER: postgres
+#      SENTRY_DB_PASSWORD: supersecretpassword
+#      SENTRY_REDIS_HOST: redis
 
 volumes:
-  pgdata: {}
-  static: {}
+  pgdata: { }
+  static: { }
