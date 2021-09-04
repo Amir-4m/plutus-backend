@@ -127,7 +127,6 @@ class AaxService(object):
         response = requests.post(f'https://api.aax.com/v2/futures/orders', json=data, headers=headers)
         response.raise_for_status()
         response = response.json()
-        lo
         if response['code'] == 1:
             return FuturesOrder.objects.create(
                 user=user,
