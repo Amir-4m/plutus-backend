@@ -32,7 +32,6 @@ def close_position(bot_id, code_name, price):
     logger.info(f'closing position, bot {bot_id}, {code_name}')
     try:
         bot = TraderBot.objects.get(id=bot_id)
-        logger.info(f"closing order info: {bot.credential_data['api_key']} -- {bot.credential_data['api_secret']} -- {bot.credential_data['api_passphrase']}")
         exchange_service = {
             'aax': AaxService(
                 api_key=bot.credential_data['api_key'],
@@ -72,17 +71,16 @@ def create_order_task(bot_id, code_name, qty, side, leverage, price):
     logger.info(f'creating order, bot:{bot_id}, {code_name}, {bot.exchange_id}, {qty}, {side}, {leverage}')
     try:
         asset = ExchangeFuturesAsset.objects.get(code_name=code_name, exchange_id=bot.exchange_id)
-        logger.info(f"creating order info: {bot.credential_data['api_key']} -- {bot.credential_data['api_secret']} -- {bot.credential_data['api_passphrase']}")
         close_position(bot_id, code_name, price)
         exchange_service = {
             'aax': AaxService(
-                api_key=bot.credential_data['api_key'],
-                api_secret=bot.credential_data['api_secret']
+                api_key=bot.credential_data.get('api_key'),
+                api_secret=bot.credential_data.get('api_secret')
             ),
             'kucoin': KucoinFuturesService(
-                api_key=bot.credential_data['api_key'],
-                api_secret=bot.credential_data['api_secret'],
-                api_passphrase=bot.credential_data['api_passphrase']
+                api_key=bot.credential_data.get('api_key'),
+                api_secret=bot.credential_data.get('api_secret'),
+                api_passphrase=bot.credential_data.get('api_passphrase')
 
             )
         }[bot.exchange.title]
