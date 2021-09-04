@@ -55,7 +55,7 @@ class KucoinFuturesService(object):
         response = response.json()
         return FuturesOrder.objects.create(
             user=user,
-            exchange_futures_asset__code_name=asset,
+            exchange_futures_asset=asset,
             exchange_futures_asset__exchange=exchange,
             open_price=float(price),
             order_id=order_id,
@@ -130,7 +130,7 @@ class AaxService(object):
         if response['code'] == 1:
             return FuturesOrder.objects.create(
                 user=user,
-                exchange_futures_asset__code_name=asset,
+                exchange_futures_asset=asset,
                 exchange_futures_asset__exchange=exchange,
                 open_price=float(price),
                 order_id=order_id,
