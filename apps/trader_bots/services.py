@@ -2,11 +2,14 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import time
 import uuid
 import requests
 
 from apps.orders.models import FuturesOrder
+
+logger = logging.getLogger(__name__)
 
 
 class KucoinFuturesService(object):
@@ -47,6 +50,7 @@ class KucoinFuturesService(object):
         }
 
         response = requests.post(url=f'{self.base_url}{endpoint}', headers=headers, json=data)
+        logger.info(f'creating kucoin order: {response.json()}')
         response.raise_for_status()
         response = response.json()
         return FuturesOrder.objects.create(
@@ -123,6 +127,7 @@ class AaxService(object):
         response = requests.post(f'https://api.aax.com/v2/futures/orders', json=data, headers=headers)
         response.raise_for_status()
         response = response.json()
+        lo
         if response['code'] == 1:
             return FuturesOrder.objects.create(
                 user=user,
