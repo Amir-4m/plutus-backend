@@ -56,7 +56,6 @@ class KucoinFuturesService(object):
         return FuturesOrder.objects.create(
             user=user,
             exchange_futures_asset=asset,
-            exchange_futures_asset__exchange=exchange,
             open_price=float(price),
             order_id=order_id,
             side=side,
@@ -131,7 +130,6 @@ class AaxService(object):
             return FuturesOrder.objects.create(
                 user=user,
                 exchange_futures_asset=asset,
-                exchange_futures_asset__exchange=exchange,
                 open_price=float(price),
                 order_id=order_id,
                 side=side,
