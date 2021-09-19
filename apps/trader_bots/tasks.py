@@ -34,13 +34,13 @@ def close_position(bot_id, code_name, price):
         bot = TraderBot.objects.get(id=bot_id)
         exchange_service = {
             'aax': AaxService(
-                api_key=bot.credential_data['api_key'],
-                api_secret=bot.credential_data['api_secret']
+                api_key=bot.credential_data.get('api_key'),
+                api_secret=bot.credential_data.get('api_secret')
             ),
             'kucoin': KucoinFuturesService(
-                api_key=bot.credential_data['api_key'],
-                api_secret=bot.credential_data['api_secret'],
-                api_passphrase=bot.credential_data['api_passphrase']
+                api_key=bot.credential_data.get('api_key'),
+                api_secret=bot.credential_data.get('api_secret'),
+                api_passphrase=bot.credential_data.get('api_passphrase')
 
             )
         }[bot.exchange.title]
@@ -89,4 +89,3 @@ def create_order_task(bot_id, code_name, qty, side, leverage, price):
         update_order_task.apply_async(args=(bot_id, order.order_id), countdown=3)
     except Exception as e:
         logger.error(f'creating order error bot {bot_id}, {code_name} : {e}')
-
