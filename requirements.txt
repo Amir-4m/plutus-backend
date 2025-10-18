@@ -1,12 +1,12 @@
 celery==5.4.0
 cryptography
-Django==3.2.6
+Django>=4.2,<4.3
 djangorestframework
 Pillow
 psycopg2-binary
 python-decouple
-python-memcached
-python-telegram-bot
+pymemcache
+python-telegram-bot>=13,<20
 pytz
 requests
 six
