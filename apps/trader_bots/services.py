@@ -39,8 +39,7 @@ class KucoinFuturesService(object):
             "side": side,
             "size": qty,
             "symbol": asset.code_name,
-            "price": str(price),
-            "type": "limit",
+            "type": "market",
             'marginMode': 'CROSS'
         }
         str_to_sign = str(now) + 'POST' + endpoint + json.dumps(data)
@@ -254,7 +253,7 @@ class TraderBotService(object):
                         strategy.leverage,
                         float(price)
                     ),
-                    countdown=10
+                    countdown=1
                 )
             elif action == 'close':
                 close_position.delay(
