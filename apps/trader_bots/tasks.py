@@ -40,7 +40,7 @@ def close_position(bot_id, code_name, price):
 
             )
         }[bot.exchange.title]
-        response = exchange_service.close_position(code_name)
+        response = exchange_service.close_position(code_name, price)
         logger.info(f'closing position, response {str(response)}')
         if bot.exchange.title == 'aax':
             if response['code'] == 1:

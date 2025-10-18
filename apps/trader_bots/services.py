@@ -39,7 +39,8 @@ class KucoinFuturesService(object):
             "side": side,
             "size": qty,
             "symbol": asset.code_name,
-            "type": "market",
+            "type": "limit",
+            "price": str(price),
             'marginMode': 'CROSS'
         }
         str_to_sign = str(now) + 'POST' + endpoint + json.dumps(data)
@@ -80,7 +81,8 @@ class KucoinFuturesService(object):
             "clientOid": str(order_id),
             "closeOrder": True,
             "symbol": code_name,
-            "type": "market",
+            "type": "limit",
+            "price": str(price),
         }
         str_to_sign = str(now) + 'POST' + endpoint + json.dumps(data)
         signature = base64.b64encode(
