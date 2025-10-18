@@ -1,7 +1,5 @@
 import logging
 
-from celery import shared_task
-
 from apps.exchanges.models import ExchangeFuturesAsset
 from apps.orders.models import FuturesOrder
 from apps.trader_bots.models import TraderBot
@@ -10,7 +8,6 @@ from apps.trader_bots.services import AaxService, KucoinFuturesService
 logger = logging.getLogger(__name__)
 
 
-@shared_task()
 def update_order_task(bot_id, order_id):
     logger.info(f'updating order, bot {bot_id}, {order_id}')
 
@@ -27,7 +24,6 @@ def update_order_task(bot_id, order_id):
             order.save()
 
 
-@shared_task()
 def close_position(bot_id, code_name, price):
     logger.info(f'closing position, bot {bot_id}, {code_name}')
     try:
@@ -65,7 +61,6 @@ def close_position(bot_id, code_name, price):
         logger.error(f'close position error bot {bot_id}, {code_name} : {e}')
 
 
-@shared_task()
 def create_order_task(bot_id, code_name, qty, side, leverage, price):
     bot = TraderBot.objects.get(id=bot_id)
     logger.info(f'creating order, bot:{bot_id}, {code_name}, {bot.exchange_id}, {qty}, {side}, {leverage}')
@@ -86,6 +81,6 @@ def create_order_task(bot_id, code_name, qty, side, leverage, price):
         }[bot.exchange.title]
         order = exchange_service.create_order(asset, qty, side, leverage, bot.user, bot.exchange, price)
         logger.info(f'creating order, response {str(order)}')
-        update_order_task.apply_async(args=(bot_id, order.order_id), countdown=3)
+        update_order_task(bot_id, order.order_id)
     except Exception as e:
         logger.error(f'creating order error bot {bot_id}, {code_name} : {e}')

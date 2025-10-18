@@ -69,7 +69,7 @@ class RegisterSerializer(serializers.Serializer):
             last_name=sure_name
         )
         verification = EmailVerification.objects.create(user=user, email=user.email)
-        send_email_verification.delay(verification.pk)
+        send_email_verification(verification.pk)
         return user
 
     def update(self, instance, validated_data):

@@ -1,5 +1,4 @@
 import logging
-from celery import shared_task
 
 from .models import EmailVerification
 from .services import AuthenticationService
@@ -7,7 +6,6 @@ from .services import AuthenticationService
 logger = logging.getLogger(__name__)
 
 
-@shared_task()
 def send_email_verification(verification_pk):
     """
     sends email verification link to user

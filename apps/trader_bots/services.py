@@ -244,19 +244,16 @@ class TraderBotService(object):
         from apps.trader_bots.tasks import create_order_task, close_position
         for strategy in strategies:
             if action == 'open':
-                create_order_task.apply_async(
-                    args=(
-                        strategy.trader_bot.id,
-                        code_name,
-                        strategy.contracts,
-                        side,
-                        strategy.leverage,
-                        float(price)
-                    ),
-                    countdown=1
+                create_order_task(
+                    strategy.trader_bot.id,
+                    code_name,
+                    strategy.contracts,
+                    side,
+                    strategy.leverage,
+                    float(price)
                 )
             elif action == 'close':
-                close_position.delay(
+                close_position(
                     strategy.trader_bot.id,
                     code_name,
                     float(price)
