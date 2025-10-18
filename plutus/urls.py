@@ -23,7 +23,7 @@ urlpatterns = [
     path('admindaeb0e/', admin.site.urls),
     path('strategies/', include('apps.strategies.urls', namespace="strategies")),
     path('api/v1/', include('plutus.urls_api')),
-    path('docs/', include_docs_urls(title='Plutus API document')),
+    # path('docs/', include_docs_urls(title='Plutus API document')),
 ]
 
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
