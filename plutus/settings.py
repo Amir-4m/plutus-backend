@@ -84,21 +84,22 @@ WSGI_APPLICATION = 'plutus.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config("DB_NAME"),
-        'USER': config("DB_USER", default=''),
-        'PASSWORD': config("DB_PASS", default=''),
-        'HOST': config("DB_HOST", default='localhost'),
-        'PORT': config("DB_PORT", default=''),
+DATABASE_URL = config('DATABASE_URL', default="")
+if DATABASE_URL:
+    db_config = dj_database_url.parse(DATABASE_URL)
+    DATABASES = {
+        'default': {
+            'ENGINE': config('DB_ENGINE', default='django.db.backends.sqlite3'),
+            'NAME': db_config['NAME'],
+            'USER': db_config['USER'],
+            'PASSWORD': db_config['PASSWORD'],
+            'HOST': db_config['HOST'],
+            'PORT': db_config['PORT'],
+            'CONN_MAX_AGE': config('CONN_MAX_AGE', default=300, cast=int)
+        }
     }
-}
-CELERY_BROKER_URL = 'amqp://%(USER)s:%(PASS)s@%(HOST)s' % {
-    'USER': config('CELERY_USER', default=''),
-    'PASS': config('CELERY_PASS', default=''),
-    'HOST': config('CELERY_HOST', default=''),
-}
+CELERY_BROKER_URL = f"{config('REDIS_URL', '')}/3"
+
 CACHES = {
     # 'default': {
     #     'BACKEND': config('CACHE_BACKEND', default='django.core.cache.backends.locmem.LocMemCache'),

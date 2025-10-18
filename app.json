@@ -1,0 +1,16 @@
+{
+  "addons": [],
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+  ],
+  "formation": {
+    "web": {
+      "quantity": 1
+    }
+  },
+  "name": "plutus-trader",
+  "scripts": {},
+  "stack": "heroku-22"
+}

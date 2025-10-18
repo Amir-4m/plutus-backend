@@ -30,3 +30,4 @@ djangorestframework-simplejwt==4.4.0
 PyJWT==1.7.1
 coreapi==2.3.3
 django-filter
+gunicorn==23.0.0
