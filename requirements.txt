@@ -6,7 +6,7 @@ Pillow
 psycopg2-binary
 python-decouple
 pymemcache
-python-telegram-bot>=13,<20
+#python-telegram-bot>=13,<20
 pytz
 requests
 six
