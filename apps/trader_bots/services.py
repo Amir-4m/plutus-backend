@@ -26,7 +26,7 @@ class KucoinFuturesService(object):
 
     def create_order(self, asset, qty, side, leverage, user, exchange, price=0):
         endpoint = f'/api/v1/orders'
-        api_version = '2'
+        api_version = '3'
         now = int(time.time() * 1000)
         passphrase = base64.b64encode(hmac.new(self.api_secret.encode('utf-8'), self.api_passphrase.encode('utf-8'), hashlib.sha256).digest())
         order_id = uuid.uuid4()
@@ -37,7 +37,8 @@ class KucoinFuturesService(object):
             "side": side,
             "size": qty,
             "symbol": asset.code_name,
-            "type": "market",
+            "type": "limit",
+            'marginMode': 'CROSS'
         }
         str_to_sign = str(now) + 'POST' + endpoint + json.dumps(data)
         signature = base64.b64encode(hmac.new(self.api_secret.encode('utf-8'), str_to_sign.encode('utf-8'), hashlib.sha256).digest())
@@ -66,7 +67,7 @@ class KucoinFuturesService(object):
 
     def close_position(self, code_name):
         endpoint = f'/api/v1/orders'
-        api_version = '2'
+        api_version = '3'
         now = int(time.time() * 1000)
         passphrase = base64.b64encode(hmac.new(self.api_secret.encode('utf-8'), self.api_passphrase.encode('utf-8'), hashlib.sha256).digest())
         order_id = uuid.uuid4()
@@ -75,7 +76,7 @@ class KucoinFuturesService(object):
             "clientOid": str(order_id),
             "closeOrder": True,
             "symbol": code_name,
-            "type": "market",
+            "type": "limit",
         }
         str_to_sign = str(now) + 'POST' + endpoint + json.dumps(data)
         signature = base64.b64encode(hmac.new(self.api_secret.encode('utf-8'), str_to_sign.encode('utf-8'), hashlib.sha256).digest())
