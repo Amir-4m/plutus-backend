@@ -5,6 +5,7 @@ import json
 import logging
 import time
 import uuid
+from urllib.parse import urlencode
 import requests
 
 from apps.orders.models import FuturesOrder
@@ -89,6 +90,36 @@ class KucoinFuturesService(object):
         }
 
         response = requests.post(url=f'{self.base_url}{endpoint}', headers=headers, json=data)
+        response.raise_for_status()
+        return response.json()
+
+    def get_account_futures(self, currency=None):
+        endpoint = '/api/v1/account-overview'
+        api_version = '3'
+        now = int(time.time() * 1000)
+        passphrase = base64.b64encode(
+            hmac.new(self.api_secret.encode('utf-8'), self.api_passphrase.encode('utf-8'), hashlib.sha256).digest()
+        )
+
+        params = {}
+        if currency:
+            params['currency'] = currency
+
+        query_string = urlencode(params)
+        request_path = endpoint if not query_string else f'{endpoint}?{query_string}'
+        str_to_sign = str(now) + 'GET' + request_path
+        signature = base64.b64encode(
+            hmac.new(self.api_secret.encode('utf-8'), str_to_sign.encode('utf-8'), hashlib.sha256).digest()
+        )
+        headers = {
+            "KC-API-SIGN": signature,
+            "KC-API-TIMESTAMP": str(now),
+            "KC-API-KEY": self.api_key,
+            "KC-API-PASSPHRASE": passphrase,
+            "KC-API-KEY-VERSION": api_version
+        }
+
+        response = requests.get(f'{self.base_url}{request_path}', headers=headers)
         response.raise_for_status()
         return response.json()
 

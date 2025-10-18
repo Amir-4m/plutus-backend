@@ -2,7 +2,7 @@ from django.template import Template, Context
 
 from apps.alerts import texts
 from apps.alerts.models import StrategyAlert, Platform
-from apps.telegram_bot.tasks import send_telegram_alert
+# from apps.telegram_bot.tasks import send_telegram_alert
 
 
 class AlertService(object):
@@ -12,4 +12,6 @@ class AlertService(object):
         text = Template(texts.ALERT_TEXT).render(Context(context))
         for alert in alerts:
             if alert.platform.platform_type == Platform.PLATFORM_TELEGRAM:
-                send_telegram_alert.delay(alert.id, text)
+                # Telegram integration disabled for now.
+                # send_telegram_alert.delay(alert.id, text)
+                continue
