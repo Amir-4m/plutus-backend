@@ -16,3 +16,4 @@ PyJWT
 coreapi
 django-filter
 gunicorn==23.0.0
+dj-database-url==2.3.0

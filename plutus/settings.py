@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 from datetime import timedelta
 from pathlib import Path
+
+import dj_database_url
 from celery.schedules import crontab
 from decouple import config, Csv
 
@@ -89,7 +91,7 @@ if DATABASE_URL:
     db_config = dj_database_url.parse(DATABASE_URL)
     DATABASES = {
         'default': {
-            'ENGINE': config('DB_ENGINE', default='django.db.backends.sqlite3'),
+            'ENGINE': config('DB_ENGINE', default='django.db.backends.postgresql_psycopg2'),
             'NAME': db_config['NAME'],
             'USER': db_config['USER'],
             'PASSWORD': db_config['PASSWORD'],

@@ -29,7 +29,8 @@ class KucoinFuturesService(object):
         endpoint = f'/api/v1/orders'
         api_version = '3'
         now = int(time.time() * 1000)
-        passphrase = base64.b64encode(hmac.new(self.api_secret.encode('utf-8'), self.api_passphrase.encode('utf-8'), hashlib.sha256).digest())
+        passphrase = base64.b64encode(
+            hmac.new(self.api_secret.encode('utf-8'), self.api_passphrase.encode('utf-8'), hashlib.sha256).digest())
         order_id = uuid.uuid4()
 
         data = {
@@ -38,11 +39,13 @@ class KucoinFuturesService(object):
             "side": side,
             "size": qty,
             "symbol": asset.code_name,
+            "price": str(price),
             "type": "limit",
             'marginMode': 'CROSS'
         }
         str_to_sign = str(now) + 'POST' + endpoint + json.dumps(data)
-        signature = base64.b64encode(hmac.new(self.api_secret.encode('utf-8'), str_to_sign.encode('utf-8'), hashlib.sha256).digest())
+        signature = base64.b64encode(
+            hmac.new(self.api_secret.encode('utf-8'), str_to_sign.encode('utf-8'), hashlib.sha256).digest())
         headers = {
             "KC-API-SIGN": signature,
             "KC-API-TIMESTAMP": str(now),
@@ -66,21 +69,23 @@ class KucoinFuturesService(object):
             is_active=True
         )
 
-    def close_position(self, code_name):
+    def close_position(self, code_name, price=0):
         endpoint = f'/api/v1/orders'
         api_version = '3'
         now = int(time.time() * 1000)
-        passphrase = base64.b64encode(hmac.new(self.api_secret.encode('utf-8'), self.api_passphrase.encode('utf-8'), hashlib.sha256).digest())
+        passphrase = base64.b64encode(
+            hmac.new(self.api_secret.encode('utf-8'), self.api_passphrase.encode('utf-8'), hashlib.sha256).digest())
         order_id = uuid.uuid4()
 
         data = {
             "clientOid": str(order_id),
             "closeOrder": True,
             "symbol": code_name,
-            "type": "limit",
+            "type": "market",
         }
         str_to_sign = str(now) + 'POST' + endpoint + json.dumps(data)
-        signature = base64.b64encode(hmac.new(self.api_secret.encode('utf-8'), str_to_sign.encode('utf-8'), hashlib.sha256).digest())
+        signature = base64.b64encode(
+            hmac.new(self.api_secret.encode('utf-8'), str_to_sign.encode('utf-8'), hashlib.sha256).digest())
         headers = {
             "KC-API-SIGN": signature,
             "KC-API-TIMESTAMP": str(now),
@@ -147,7 +152,8 @@ class AaxService(object):
             "leverage": leverage
         }
 
-        signature = hmac.new(self.api_secret.encode(), (str(nonce) + ':' + verb + path + json.dumps(data)).encode(), hashlib.sha256).hexdigest()
+        signature = hmac.new(self.api_secret.encode(), (str(nonce) + ':' + verb + path + json.dumps(data)).encode(),
+                             hashlib.sha256).hexdigest()
 
         nonce = str(int(1000 * time.time()))
         headers = {
@@ -175,7 +181,8 @@ class AaxService(object):
         path = f'/v2/futures/position?symbol={code_name}'
         nonce = str(int(1000 * time.time()))
         data = ''
-        signature = hmac.new(self.api_secret.encode(), (str(nonce) + ':' + verb + path + data).encode(), hashlib.sha256).hexdigest()
+        signature = hmac.new(self.api_secret.encode(), (str(nonce) + ':' + verb + path + data).encode(),
+                             hashlib.sha256).hexdigest()
 
         params = {
             "symbol": code_name
@@ -197,7 +204,8 @@ class AaxService(object):
         data = {
             'symbol': code_name
         }
-        signature = hmac.new(self.api_secret.encode(), (str(nonce) + ':' + verb + path + json.dumps(data)).encode(), hashlib.sha256).hexdigest()
+        signature = hmac.new(self.api_secret.encode(), (str(nonce) + ':' + verb + path + json.dumps(data)).encode(),
+                             hashlib.sha256).hexdigest()
 
         headers = {
             'X-ACCESS-NONCE': nonce,
@@ -217,7 +225,8 @@ class AaxService(object):
             'clOrdID': order_id
         }
         data = ''
-        signature = hmac.new(self.api_secret.encode(), (str(nonce) + ':' + verb + path + data).encode(), hashlib.sha256).hexdigest()
+        signature = hmac.new(self.api_secret.encode(), (str(nonce) + ':' + verb + path + data).encode(),
+                             hashlib.sha256).hexdigest()
 
         headers = {
             'X-ACCESS-NONCE': nonce,
