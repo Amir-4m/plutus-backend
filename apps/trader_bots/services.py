@@ -243,19 +243,26 @@ class AaxService(object):
 class TraderBotService(object):
     @staticmethod
     def trade_on_strategy(strategies, side, code_name, action, price):
-        from apps.trader_bots.tasks import create_order_task, close_position
+        from apps.trader_bots.tasks import (
+            CREATE_ORDER_COUNTDOWN,
+            close_position_task,
+            create_order_task,
+        )
         for strategy in strategies:
             if action == 'open':
-                create_order_task(
-                    strategy.trader_bot.id,
-                    code_name,
-                    strategy.contracts,
-                    side,
-                    strategy.leverage,
-                    float(price)
+                create_order_task.apply_async(
+                    args=(
+                        strategy.trader_bot.id,
+                        code_name,
+                        strategy.contracts,
+                        side,
+                        strategy.leverage,
+                        float(price)
+                    ),
+                    countdown=CREATE_ORDER_COUNTDOWN
                 )
             elif action == 'close':
-                close_position(
+                close_position_task.delay(
                     strategy.trader_bot.id,
                     code_name,
                     float(price)
