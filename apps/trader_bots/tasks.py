@@ -9,7 +9,7 @@ from apps.trader_bots.services import AaxService, KucoinFuturesService
 
 logger = logging.getLogger(__name__)
 
-CREATE_ORDER_COUNTDOWN = 20
+CREATE_ORDER_COUNTDOWN = 6
 
 
 def _build_exchange_service(bot):
