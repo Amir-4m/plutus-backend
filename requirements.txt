@@ -17,3 +17,4 @@ coreapi
 django-filter
 gunicorn==23.0.0
 dj-database-url==2.3.0
+django-redis==5.4.0
