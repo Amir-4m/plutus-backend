@@ -99,7 +99,7 @@ if DATABASE_URL:
             'CONN_MAX_AGE': config('CONN_MAX_AGE', default=300, cast=int)
         }
     }
-CELERY_BROKER_URL = f"{config('REDIS_URL', '')}/3"
+CELERY_BROKER_URL = f"{config('REDIS_URL', '')}"
 
 CACHES = {
     # 'default': {
