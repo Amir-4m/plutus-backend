@@ -52,7 +52,8 @@ class WebHookView(View):
                 payload['side'],
                 exchange_asset.code_name,
                 payload['action'],
-                payload['price']
+                payload['price'],
+                payload.get('ID')
             )
 
         except Strategy.DoesNotExist:

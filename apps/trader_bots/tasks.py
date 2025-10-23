@@ -50,6 +50,40 @@ def _close_position(bot, code_name, price):
     return response
 
 
+def _reduce_position(bot, code_name, side, percent, leverage, price, action_comment=None, order_id=None):
+    exchange_service = _build_exchange_service(bot)
+    if not hasattr(exchange_service, 'reduce_position'):
+        logger.warning(
+            'reduce position not supported for exchange %s. action=%s, order_id=%s',
+            bot.exchange.title,
+            action_comment,
+            order_id
+        )
+        return
+
+    asset = ExchangeFuturesAsset.objects.get(code_name=code_name, exchange=bot.exchange)
+    response = exchange_service.reduce_position(
+        asset=asset,
+        qty_percent=percent,
+        side=side,
+        leverage=leverage,
+        user=bot.user,
+        exchange=bot.exchange,
+        price=price,
+        action_comment=action_comment,
+        alert_order_id=order_id
+    )
+    logger.info(
+        'reduce position executed, bot=%s asset=%s percent=%s side=%s order_id=%s response=%s',
+        bot.id,
+        code_name,
+        percent,
+        side,
+        order_id,
+        response
+    )
+
+
 def update_order_task(bot_id, order_id):
     logger.info(f'updating order, bot {bot_id}, {order_id}')
 
@@ -91,3 +125,33 @@ def create_order_task(bot_id, code_name, qty, side, leverage, price):
         update_order_task(bot_id, order.order_id)
     except Exception as e:
         logger.error(f'creating order error bot {bot_id}, {code_name} : {e}')
+
+
+@shared_task(name='trader_bots.reduce_position')
+def reduce_position_task(bot_id, code_name, side, percent, leverage, price, action_comment=None, order_id=None):
+    logger.info(
+        'reducing position, bot:%s, %s, percent:%s, side:%s, order_id:%s',
+        bot_id,
+        code_name,
+        percent,
+        side,
+        order_id
+    )
+    try:
+        bot = TraderBot.objects.get(id=bot_id)
+        _reduce_position(
+            bot=bot,
+            code_name=code_name,
+            side=side,
+            percent=percent,
+            leverage=leverage,
+            price=float(price),
+            action_comment=action_comment,
+            order_id=order_id
+        )
+    except TraderBot.DoesNotExist:
+        logger.error(f'reduce position error bot {bot_id}, {code_name} : trader bot not found')
+    except ExchangeFuturesAsset.DoesNotExist:
+        logger.error(f'reduce position error bot {bot_id}, {code_name} : futures asset not found')
+    except Exception as e:
+        logger.error(f'reduce position error bot {bot_id}, {code_name} : {e}')
