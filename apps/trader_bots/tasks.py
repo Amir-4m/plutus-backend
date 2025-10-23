@@ -84,7 +84,7 @@ def create_order_task(bot_id, code_name, qty, side, leverage, price):
     logger.info(f'creating order, bot:{bot_id}, {code_name}, {bot.exchange_id}, {qty}, {side}, {leverage}')
     try:
         asset = ExchangeFuturesAsset.objects.get(code_name=code_name, exchange_id=bot.exchange_id)
-        _close_position(bot, code_name, price)
+        # _close_position(bot, code_name, price)
         exchange_service = _build_exchange_service(bot)
         order = exchange_service.create_order(asset, qty, side, leverage, bot.user, bot.exchange, price)
         logger.info(f'creating order, response {str(order)}')
