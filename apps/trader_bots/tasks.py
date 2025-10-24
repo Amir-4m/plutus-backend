@@ -28,16 +28,44 @@ def _build_exchange_service(bot):
 
 def _close_position(bot, code_name, price):
     exchange_service = _build_exchange_service(bot)
-    response = exchange_service.close_position(code_name, price)
-    logger.info(f'closing position, response {str(response)}')
+    try:
+        asset = ExchangeFuturesAsset.objects.get(code_name=code_name, exchange=bot.exchange)
+    except ExchangeFuturesAsset.DoesNotExist:
+        logger.error(
+            'closing position failed: futures asset not found for bot=%s code_name=%s exchange=%s',
+            bot.id,
+            code_name,
+            bot.exchange_id
+        )
+        return None
+
+    response = exchange_service.close_position(
+        asset=asset,
+        user=bot.user,
+        exchange=bot.exchange,
+        price=price
+    )
+    logger.info('closing position, bot=%s asset=%s response=%s', bot.id, code_name, response)
+    response_payload = response
+    used_price = price
+    if isinstance(response, dict):
+        response_payload = response.get('response', response)
+        if response.get('price') is not None:
+            used_price = response['price']
+
+    try:
+        used_price_float = float(used_price)
+    except (TypeError, ValueError):
+        used_price_float = price
+
     if bot.exchange.title == 'aax':
-        if response['code'] == 1:
+        if isinstance(response_payload, dict) and response_payload.get('code') == 1:
             FuturesOrder.objects.filter(
                 user=bot.user,
                 exchange_futures_asset__exchange=bot.exchange,
                 exchange_futures_asset__code_name=code_name,
                 is_active=True
-            ).update(is_active=False, close_price=price)
+            ).update(is_active=False, close_price=used_price_float)
 
     else:
         FuturesOrder.objects.filter(
@@ -45,9 +73,9 @@ def _close_position(bot, code_name, price):
             exchange_futures_asset__exchange=bot.exchange,
             exchange_futures_asset__code_name=code_name,
             is_active=True
-        ).update(is_active=False, close_price=price)
+        ).update(is_active=False, close_price=used_price_float)
 
-    return response
+    return response_payload
 
 
 def _reduce_position(bot, code_name, side, percent, leverage, price, action_comment=None, order_id=None):

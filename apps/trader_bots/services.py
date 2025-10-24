@@ -28,6 +28,68 @@ class KucoinFuturesService(object):
         else:
             self.base_url = 'https://api-futures.kucoin.com'
 
+    @staticmethod
+    def _ensure_decimal(value):
+        if isinstance(value, Decimal):
+            return value
+        try:
+            return Decimal(str(value))
+        except (InvalidOperation, TypeError):
+            return None
+
+    @staticmethod
+    def _format_decimal(value):
+        decimal_value = KucoinFuturesService._ensure_decimal(value)
+        if decimal_value is None:
+            return None
+        normalized = decimal_value.normalize()
+        formatted = format(normalized, 'f')
+        if '.' in formatted:
+            formatted = formatted.rstrip('0').rstrip('.')
+        return formatted or '0'
+
+    def _fetch_top_of_book(self, symbol):
+        endpoint = '/api/v1/level2/depth20'
+        response = requests.get(f'{self.base_url}{endpoint}', params={'symbol': symbol})
+        response.raise_for_status()
+        payload = response.json() or {}
+        data = payload.get('data') or {}
+        asks = data.get('asks') or []
+        bids = data.get('bids') or []
+
+        def _extract_price(levels):
+            if not levels:
+                return None
+            first_level = levels[0]
+            if isinstance(first_level, (list, tuple)) and first_level:
+                return self._ensure_decimal(first_level[0])
+            if isinstance(first_level, dict):
+                return self._ensure_decimal(first_level.get('price'))
+            return None
+
+        best_ask = _extract_price(asks)
+        best_bid = _extract_price(bids)
+        return best_bid, best_ask
+
+    def _select_limit_price(self, symbol, side, fallback_price):
+        fallback_decimal = self._ensure_decimal(fallback_price)
+        try:
+            best_bid, best_ask = self._fetch_top_of_book(symbol)
+        except Exception as exc:
+            logger.warning('kucoin orderbook unavailable for %s: %s', symbol, exc)
+            if fallback_decimal is None:
+                raise
+            return fallback_decimal
+
+        if side == FuturesOrder.SIDE_LONG:
+            chosen = best_ask or fallback_decimal
+        else:
+            chosen = best_bid or fallback_decimal
+
+        if chosen is None:
+            raise ValueError(f'unable to determine limit price for {symbol}')
+        return chosen
+
     def create_order(
         self,
         asset,
@@ -47,6 +109,9 @@ class KucoinFuturesService(object):
             hmac.new(self.api_secret.encode('utf-8'), self.api_passphrase.encode('utf-8'), hashlib.sha256).digest())
         order_id = uuid.uuid4()
 
+        limit_price = self._select_limit_price(asset.code_name, side, price)
+        price_str = self._format_decimal(limit_price)
+
         def _format_size(value):
             if isinstance(value, Decimal):
                 formatted = format(value.normalize(), 'f')
@@ -64,8 +129,8 @@ class KucoinFuturesService(object):
             "side": side,
             "size": _format_size(qty),
             "symbol": asset.code_name,
-            "type": "market",
-            # "price": str(price),
+            "type": "limit",
+            "price": price_str,
             'marginMode': 'CROSS'
         }
         if reduce_only:
@@ -103,7 +168,7 @@ class KucoinFuturesService(object):
         return FuturesOrder.objects.create(
             user=user,
             exchange_futures_asset=asset,
-            open_price=float(price),
+            open_price=float(limit_price),
             order_id=order_id,
             side=side,
             leverage=leverage,
@@ -111,36 +176,48 @@ class KucoinFuturesService(object):
             is_active=True
         )
 
-    def close_position(self, code_name, price=0):
-        endpoint = f'/api/v1/orders'
-        api_version = '3'
-        now = int(time.time() * 1000)
-        passphrase = base64.b64encode(
-            hmac.new(self.api_secret.encode('utf-8'), self.api_passphrase.encode('utf-8'), hashlib.sha256).digest())
-        order_id = uuid.uuid4()
+    def close_position(self, asset, user, exchange, price=0):
+        position_response = self.get_position(asset.code_name)
+        position_data = position_response.get('data') or []
+        if isinstance(position_data, dict):
+            position_data = [position_data]
+        if not position_data:
+            logger.info('no kucoin position to close for %s', asset.code_name)
+            price_decimal = self._ensure_decimal(price)
+            return {'response': position_response, 'price': float(price_decimal) if price_decimal else None}
 
-        data = {
-            "clientOid": str(order_id),
-            "closeOrder": True,
-            "symbol": code_name,
-            "type": "market",
-            "marginMode": "CROSS"
-            # "price": str(price),
-        }
-        str_to_sign = str(now) + 'POST' + endpoint + json.dumps(data)
-        signature = base64.b64encode(
-            hmac.new(self.api_secret.encode('utf-8'), str_to_sign.encode('utf-8'), hashlib.sha256).digest())
-        headers = {
-            "KC-API-SIGN": signature,
-            "KC-API-TIMESTAMP": str(now),
-            "KC-API-KEY": self.api_key,
-            "KC-API-PASSPHRASE": passphrase,
-            "KC-API-KEY-VERSION": api_version
-        }
+        current_qty_raw = position_data[0].get('currentQty')
+        current_qty = self._ensure_decimal(current_qty_raw)
+        if current_qty is None or current_qty == 0:
+            logger.info('kucoin position size is zero for %s', asset.code_name)
+            price_decimal = self._ensure_decimal(price)
+            return {'response': position_response, 'price': float(price_decimal) if price_decimal else None}
 
-        response = requests.post(url=f'{self.base_url}{endpoint}', headers=headers, json=data)
-        response.raise_for_status()
-        return response.json()
+        close_side = FuturesOrder.SIDE_SHORT if current_qty > 0 else FuturesOrder.SIDE_LONG
+        qty_to_close = current_qty.copy_abs()
+        leverage_value = (
+            position_data[0].get('currentLeverage')
+            or position_data[0].get('maxLeverage')
+            or position_data[0].get('leverage')
+            or 1
+        )
+        limit_price = self._select_limit_price(asset.code_name, close_side, price)
+
+        response_data = self.create_order(
+            asset=asset,
+            qty=qty_to_close,
+            side=close_side,
+            leverage=leverage_value or 1,
+            user=user,
+            exchange=exchange,
+            price=limit_price,
+            reduce_only=True,
+            record_order=False
+        )
+        return {
+            'response': response_data,
+            'price': float(limit_price)
+        }
 
     def get_position(self, code_name):
         endpoint = '/api/v2/position'
@@ -282,7 +359,70 @@ class AaxService(object):
         self.api_key = api_key
         self.api_secret = api_secret
 
-    def create_order(self, asset, qty, side, leverage, user, exchange, price=0):
+    @staticmethod
+    def _ensure_decimal(value):
+        if isinstance(value, Decimal):
+            return value
+        try:
+            return Decimal(str(value))
+        except (InvalidOperation, TypeError):
+            return None
+
+    @staticmethod
+    def _format_decimal(value):
+        decimal_value = AaxService._ensure_decimal(value)
+        if decimal_value is None:
+            return None
+        normalized = decimal_value.normalize()
+        formatted = format(normalized, 'f')
+        if '.' in formatted:
+            formatted = formatted.rstrip('0').rstrip('.')
+        return formatted or '0'
+
+    def _fetch_top_of_book(self, symbol):
+        params = {'symbol': symbol}
+        response = requests.get('https://api.aax.com/v2/market/orderbook', params=params)
+        response.raise_for_status()
+        payload = response.json() or {}
+        data = payload.get('data') or {}
+        asks = data.get('asks') or data.get('a') or []
+        bids = data.get('bids') or data.get('b') or []
+
+        def _extract_price(levels):
+            if not levels:
+                return None
+            first_level = levels[0]
+            if isinstance(first_level, (list, tuple)) and first_level:
+                return self._ensure_decimal(first_level[0])
+            if isinstance(first_level, dict):
+                price_value = first_level.get('price') or first_level.get('p')
+                return self._ensure_decimal(price_value)
+            return None
+
+        best_ask = _extract_price(asks)
+        best_bid = _extract_price(bids)
+        return best_bid, best_ask
+
+    def _select_limit_price(self, symbol, side, fallback_price):
+        fallback_decimal = self._ensure_decimal(fallback_price)
+        try:
+            best_bid, best_ask = self._fetch_top_of_book(symbol)
+        except Exception as exc:
+            logger.warning('aax orderbook unavailable for %s: %s', symbol, exc)
+            if fallback_decimal is None:
+                raise
+            return fallback_decimal
+
+        if side == FuturesOrder.SIDE_LONG:
+            chosen = best_ask or fallback_decimal
+        else:
+            chosen = best_bid or fallback_decimal
+
+        if chosen is None:
+            raise ValueError(f'unable to determine limit price for {symbol}')
+        return chosen
+
+    def create_order(self, asset, qty, side, leverage, user, exchange, price=0, reduce_only=False, record_order=True):
         verb = 'POST'
         path = '/v2/futures/orders'
         nonce = str(int(1000 * time.time()))
@@ -291,14 +431,21 @@ class AaxService(object):
             FuturesOrder.SIDE_LONG: "BUY",
             FuturesOrder.SIDE_SHORT: "SELL"
         }[side]
+        limit_price = self._select_limit_price(asset.code_name, side, price)
+        price_str = self._format_decimal(limit_price)
+        qty_str = self._format_decimal(qty)
         data = {
-            "orderType": "MARKET",
+            "orderType": "LIMIT",
             "symbol": asset.code_name,
-            "orderQty": qty,
+            "orderQty": qty_str,
             "side": order_side,
             "clOrdID": str(order_id)[:20],
-            "leverage": leverage
+            "leverage": leverage,
+            "price": price_str,
+            "timeInForce": "GoodTillCancel"
         }
+        if reduce_only:
+            data["reduceOnly"] = True
 
         signature = hmac.new(self.api_secret.encode(), (str(nonce) + ':' + verb + path + json.dumps(data)).encode(),
                              hashlib.sha256).hexdigest()
@@ -313,16 +460,19 @@ class AaxService(object):
         response.raise_for_status()
         response = response.json()
         if response['code'] == 1:
+            if not record_order:
+                return response
             return FuturesOrder.objects.create(
                 user=user,
                 exchange_futures_asset=asset,
-                open_price=float(price),
+                open_price=float(limit_price),
                 order_id=order_id,
                 side=side,
                 leverage=leverage,
                 logs=str(response),
                 is_active=False
             )
+        return response
 
     def get_open_position(self, code_name):
         verb = 'GET'
@@ -345,25 +495,68 @@ class AaxService(object):
         response = response.json()
         return response
 
-    def close_position(self, code_name):
-        verb = 'POST'
-        path = f'/v2/futures/position/close'
-        nonce = str(int(1000 * time.time()))
-        data = {
-            'symbol': code_name
-        }
-        signature = hmac.new(self.api_secret.encode(), (str(nonce) + ':' + verb + path + json.dumps(data)).encode(),
-                             hashlib.sha256).hexdigest()
+    def close_position(self, asset, user, exchange, price=0):
+        position_response = self.get_open_position(asset.code_name)
+        positions_data = position_response.get('data') or []
+        if isinstance(positions_data, dict):
+            positions_data = positions_data.get('positions') or positions_data.get('items') or [positions_data]
+        if not positions_data:
+            logger.info('no aax position to close for %s', asset.code_name)
+            price_decimal = self._ensure_decimal(price)
+            return {'response': position_response, 'price': float(price_decimal) if price_decimal else None}
 
-        headers = {
-            'X-ACCESS-NONCE': nonce,
-            'X-ACCESS-KEY': self.api_key,
-            'X-ACCESS-SIGN': signature,
+        position = None
+        for entry in positions_data:
+            symbol_value = entry.get('symbol') or entry.get('symbolCode') or entry.get('contract')
+            if not symbol_value or symbol_value != asset.code_name:
+                continue
+            position = entry
+            break
+        if position is None:
+            position = positions_data[0]
+
+        qty_keys = ['positionQty', 'currentQty', 'size', 'posQty', 'holdVol', 'positionAmt', 'openContract', 'openVolume']
+        qty_raw = None
+        for key in qty_keys:
+            qty_raw = position.get(key)
+            if qty_raw is not None:
+                break
+        qty_decimal = self._ensure_decimal(qty_raw)
+        if qty_decimal is None or qty_decimal == 0:
+            logger.info('aax position size is zero for %s', asset.code_name)
+            price_decimal = self._ensure_decimal(price)
+            return {'response': position_response, 'price': float(price_decimal) if price_decimal else None}
+
+        side_raw = (position.get('positionSide') or position.get('posSide') or position.get('side') or '').lower()
+        if side_raw in ('long', 'buy'):
+            close_side = FuturesOrder.SIDE_SHORT
+        elif side_raw in ('short', 'sell'):
+            close_side = FuturesOrder.SIDE_LONG
+        else:
+            close_side = FuturesOrder.SIDE_SHORT if qty_decimal > 0 else FuturesOrder.SIDE_LONG
+
+        limit_price = self._select_limit_price(asset.code_name, close_side, price)
+        leverage_value = (
+            position.get('leverage')
+            or position.get('realLeverage')
+            or position.get('currentLeverage')
+            or 1
+        )
+        response_data = self.create_order(
+            asset=asset,
+            qty=qty_decimal.copy_abs(),
+            side=close_side,
+            leverage=leverage_value or 1,
+            user=user,
+            exchange=exchange,
+            price=limit_price,
+            reduce_only=True,
+            record_order=False
+        )
+        return {
+            'response': response_data,
+            'price': float(limit_price)
         }
-        response = requests.post('https://api.aax.com/v2/futures/position/close', json=data, headers=headers)
-        response.raise_for_status()
-        response = response.json()
-        return response
 
     def get_order(self, order_id):
         verb = 'GET'
@@ -412,25 +605,22 @@ class TraderBotService(object):
         percent = TraderBotService._extract_tp_percent(action)
         for strategy in strategies:
             if normalized_action == 'open':
-                create_order_task.apply_async(
-                    args=(
-                        strategy.trader_bot.id,
-                        code_name,
-                        strategy.contracts,
-                        side,
-                        strategy.leverage,
-                        float(price)
-                    ),
-                    countdown=CREATE_ORDER_COUNTDOWN
+                create_order_task(
+                    strategy.trader_bot.id,
+                    code_name,
+                    strategy.contracts,
+                    side,
+                    strategy.leverage,
+                    float(price)
                 )
             elif normalized_action == 'close' or (percent is None and 'close' in normalized_action):
-                close_position_task.delay(
+                close_position_task(
                     strategy.trader_bot.id,
                     code_name,
                     float(price)
                 )
             elif percent is not None:
-                reduce_position_task.delay(
+                reduce_position_task(
                     strategy.trader_bot.id,
                     code_name,
                     side,
