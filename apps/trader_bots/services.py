@@ -124,6 +124,7 @@ class KucoinFuturesService(object):
             "closeOrder": True,
             "symbol": code_name,
             "type": "market",
+            "marginMode": "CROSS"
             # "price": str(price),
         }
         str_to_sign = str(now) + 'POST' + endpoint + json.dumps(data)
@@ -187,8 +188,8 @@ class KucoinFuturesService(object):
             return None
 
         position_response = self.get_position(asset.code_name)
-        position_data = position_response.get('data') or {}
-        current_qty_raw = position_data.get('currentQty')
+        position_data = position_response.get('data') or []
+        current_qty_raw = position_data[0].get('currentQty')
 
         try:
             current_qty = Decimal(str(current_qty_raw))
