@@ -91,16 +91,16 @@ class KucoinFuturesService(object):
         return chosen
 
     def create_order(
-        self,
-        asset,
-        qty,
-        side,
-        leverage,
-        user,
-        exchange,
-        price=0,
-        reduce_only=False,
-        record_order=True,
+            self,
+            asset,
+            qty,
+            side,
+            leverage,
+            user,
+            exchange,
+            price=0,
+            reduce_only=False,
+            record_order=True,
     ):
         endpoint = f'/api/v1/orders'
         api_version = '3'
@@ -196,10 +196,10 @@ class KucoinFuturesService(object):
         close_side = FuturesOrder.SIDE_SHORT if current_qty > 0 else FuturesOrder.SIDE_LONG
         qty_to_close = current_qty.copy_abs()
         leverage_value = (
-            position_data[0].get('currentLeverage')
-            or position_data[0].get('maxLeverage')
-            or position_data[0].get('leverage')
-            or 1
+                position_data[0].get('currentLeverage')
+                or position_data[0].get('maxLeverage')
+                or position_data[0].get('leverage')
+                or 1
         )
         limit_price = self._select_limit_price(asset.code_name, close_side, price)
 
@@ -247,16 +247,16 @@ class KucoinFuturesService(object):
         return data
 
     def reduce_position(
-        self,
-        asset,
-        qty_percent,
-        side,
-        leverage,
-        user,
-        exchange,
-        price=0,
-        action_comment=None,
-        alert_order_id=None,
+            self,
+            asset,
+            qty_percent,
+            side,
+            leverage,
+            user,
+            exchange,
+            price=0,
+            action_comment=None,
+            alert_order_id=None,
     ):
         try:
             percent_decimal = Decimal(str(qty_percent))
@@ -515,7 +515,8 @@ class AaxService(object):
         if position is None:
             position = positions_data[0]
 
-        qty_keys = ['positionQty', 'currentQty', 'size', 'posQty', 'holdVol', 'positionAmt', 'openContract', 'openVolume']
+        qty_keys = ['positionQty', 'currentQty', 'size', 'posQty', 'holdVol', 'positionAmt', 'openContract',
+                    'openVolume']
         qty_raw = None
         for key in qty_keys:
             qty_raw = position.get(key)
@@ -537,10 +538,10 @@ class AaxService(object):
 
         limit_price = self._select_limit_price(asset.code_name, close_side, price)
         leverage_value = (
-            position.get('leverage')
-            or position.get('realLeverage')
-            or position.get('currentLeverage')
-            or 1
+                position.get('leverage')
+                or position.get('realLeverage')
+                or position.get('currentLeverage')
+                or 1
         )
         response_data = self.create_order(
             asset=asset,
@@ -605,22 +606,25 @@ class TraderBotService(object):
         percent = TraderBotService._extract_tp_percent(action)
         for strategy in strategies:
             if normalized_action == 'open':
-                create_order_task(
-                    strategy.trader_bot.id,
-                    code_name,
-                    strategy.contracts,
-                    side,
-                    strategy.leverage,
-                    float(price)
+                create_order_task.apply_async(
+                    args=(
+                        strategy.trader_bot.id,
+                        code_name,
+                        strategy.contracts,
+                        side,
+                        strategy.leverage,
+                        float(price)
+                    ),
+                    countdown=CREATE_ORDER_COUNTDOWN
                 )
             elif normalized_action == 'close' or (percent is None and 'close' in normalized_action):
-                close_position_task(
+                close_position_task.delay(
                     strategy.trader_bot.id,
                     code_name,
                     float(price)
                 )
             elif percent is not None:
-                reduce_position_task(
+                reduce_position_task.delay(
                     strategy.trader_bot.id,
                     code_name,
                     side,
