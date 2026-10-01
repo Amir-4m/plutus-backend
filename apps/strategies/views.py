@@ -1,6 +1,8 @@
+import hmac
 import json
 import logging
 
+from django.conf import settings
 from django.db import transaction
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
@@ -15,6 +17,15 @@ from apps.trader_bots.services import TraderBotService
 logger = logging.getLogger(__name__)
 
 
+def _optional_float(value):
+    if value in (None, ''):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 class WebHookView(View):
     @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
@@ -23,7 +34,24 @@ class WebHookView(View):
     @transaction.atomic
     def post(self, request):
         logger.info(f'webhook called with data: {str(request.body)}')
-        payload = json.loads(request.body)
+        try:
+            payload = json.loads(request.body)
+        except (TypeError, ValueError) as e:
+            logger.error(f'webhook, invalid json payload: {e}')
+            return HttpResponse('invalid payload', status=400)
+        if not isinstance(payload, dict):
+            logger.error('webhook, payload is not a json object')
+            return HttpResponse('invalid payload', status=400)
+
+        expected_secret = settings.STRATEGY_WEBHOOK_SECRET
+        if expected_secret:
+            received_secret = str(payload.get('secret') or '')
+            if not hmac.compare_digest(received_secret.encode(), expected_secret.encode()):
+                logger.error('webhook, rejected: missing or invalid secret')
+                return HttpResponse('forbidden', status=403)
+        else:
+            logger.warning('webhook, STRATEGY_WEBHOOK_SECRET is not set; accepting unauthenticated webhook')
+
         strategy_title = payload.get('strategy')
         try:
             strategy = Strategy.objects.get(title=strategy_title, is_enable=True, asset__symbol=payload['symbol'])
@@ -53,7 +81,9 @@ class WebHookView(View):
                 exchange_asset.code_name,
                 payload['action'],
                 payload['price'],
-                payload.get('ID')
+                payload.get('ID'),
+                size_pct=_optional_float(payload.get('size_pct')),
+                stop_price=_optional_float(payload.get('stop')),
             )
 
         except Strategy.DoesNotExist:

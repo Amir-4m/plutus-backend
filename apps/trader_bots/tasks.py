@@ -141,15 +141,35 @@ def close_position_task(bot_id, code_name, price):
 
 
 @shared_task(name='trader_bots.create_order')
-def create_order_task(bot_id, code_name, qty, side, leverage, price):
+def create_order_task(bot_id, code_name, qty, side, leverage, price, size_pct=None, stop_price=None):
     bot = TraderBot.objects.get(id=bot_id)
-    logger.info(f'creating order, bot:{bot_id}, {code_name}, {bot.exchange_id}, {qty}, {side}, {leverage}')
+    logger.info(
+        f'creating order, bot:{bot_id}, {code_name}, {bot.exchange_id}, {qty}, {side}, {leverage}, '
+        f'size_pct:{size_pct}, stop:{stop_price}'
+    )
     try:
         asset = ExchangeFuturesAsset.objects.get(code_name=code_name, exchange_id=bot.exchange_id)
         # _close_position(bot, code_name, price)
         exchange_service = _build_exchange_service(bot)
+        if size_pct is not None and hasattr(exchange_service, 'calculate_order_size'):
+            sized_qty = exchange_service.calculate_order_size(code_name, size_pct, price)
+            if sized_qty is None:
+                logger.warning(f'creating order, bot {bot_id}, {code_name}: cannot size by equity, using {qty} contracts')
+            elif sized_qty <= 0:
+                logger.warning(
+                    f'creating order skipped, bot {bot_id}, {code_name}: {size_pct}% of equity is below one lot'
+                )
+                return
+            else:
+                qty = sized_qty
         order = exchange_service.create_order(asset, qty, side, leverage, bot.user, bot.exchange, price)
         logger.info(f'creating order, response {str(order)}')
+        if stop_price is not None and hasattr(exchange_service, 'place_stop_loss'):
+            try:
+                exchange_service.cancel_stop_orders(code_name)
+                exchange_service.place_stop_loss(asset, side, stop_price)
+            except Exception as e:
+                logger.error(f'placing stop loss error bot {bot_id}, {code_name} : {e}')
         update_order_task(bot_id, order.order_id)
     except Exception as e:
         logger.error(f'creating order error bot {bot_id}, {code_name} : {e}')

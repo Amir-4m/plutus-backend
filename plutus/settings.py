@@ -251,3 +251,7 @@ TELEGRAM_BOT = {
     'MODE': config('TELEGRAM_BOT_MODE', default='POLLING'),
     'WEBHOOK_SITE': '',
 }
+
+# Shared secret TradingView alerts must send as "secret" in the webhook payload.
+# Leave empty to accept unauthenticated webhooks (not recommended).
+STRATEGY_WEBHOOK_SECRET = config('STRATEGY_WEBHOOK_SECRET', default='')

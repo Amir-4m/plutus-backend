@@ -7,7 +7,7 @@ import re
 import time
 import uuid
 from urllib.parse import urlencode
-from decimal import Decimal, InvalidOperation, ROUND_DOWN
+from decimal import Decimal, InvalidOperation, ROUND_DOWN, ROUND_UP
 
 import requests
 
@@ -47,6 +47,118 @@ class KucoinFuturesService(object):
         if '.' in formatted:
             formatted = formatted.rstrip('0').rstrip('.')
         return formatted or '0'
+
+    def _auth_headers(self, method, request_path, body=''):
+        now = int(time.time() * 1000)
+        passphrase = base64.b64encode(
+            hmac.new(self.api_secret.encode('utf-8'), self.api_passphrase.encode('utf-8'), hashlib.sha256).digest())
+        str_to_sign = str(now) + method + request_path + body
+        signature = base64.b64encode(
+            hmac.new(self.api_secret.encode('utf-8'), str_to_sign.encode('utf-8'), hashlib.sha256).digest())
+        return {
+            "KC-API-SIGN": signature,
+            "KC-API-TIMESTAMP": str(now),
+            "KC-API-KEY": self.api_key,
+            "KC-API-PASSPHRASE": passphrase,
+            "KC-API-KEY-VERSION": '3',
+            "Content-Type": "application/json",
+        }
+
+    @staticmethod
+    def _quantize_to_step(value, step, rounding):
+        return (value / step).to_integral_value(rounding=rounding) * step
+
+    def get_contract(self, code_name):
+        response = requests.get(f'{self.base_url}/api/v1/contracts/{code_name}')
+        response.raise_for_status()
+        return response.json().get('data') or {}
+
+    def calculate_order_size(self, code_name, size_pct, price):
+        """Convert a % of account equity into a number of contracts.
+
+        Returns None when the size cannot be derived for this contract (caller should fall back
+        to its fixed size), or Decimal('0') when the position would be smaller than one lot.
+        """
+        size_pct_decimal = self._ensure_decimal(size_pct)
+        price_decimal = self._ensure_decimal(price)
+        if not size_pct_decimal or size_pct_decimal <= 0 or not price_decimal or price_decimal <= 0:
+            return None
+
+        contract = self.get_contract(code_name)
+        multiplier = self._ensure_decimal(contract.get('multiplier'))
+        lot_size = self._ensure_decimal(contract.get('lotSize')) or Decimal('1')
+        settle_currency = contract.get('settleCurrency') or 'USDT'
+        if multiplier is None or multiplier <= 0 or contract.get('isInverse'):
+            logger.warning('kucoin contract %s is not a linear contract, cannot size by equity', code_name)
+            return None
+
+        account = self.get_account_futures(settle_currency).get('data') or {}
+        equity = self._ensure_decimal(account.get('accountEquity'))
+        if equity is None or equity <= 0:
+            logger.warning('kucoin account equity unavailable for %s: %s', settle_currency, account)
+            return None
+
+        notional = equity * size_pct_decimal / Decimal('100')
+        size = self._quantize_to_step(notional / (price_decimal * multiplier), lot_size, ROUND_DOWN)
+        logger.info(
+            'kucoin order size for %s: equity=%s %s, size_pct=%s, price=%s, multiplier=%s -> %s contracts',
+            code_name, equity, settle_currency, size_pct_decimal, price_decimal, multiplier, size
+        )
+        return max(size, Decimal('0'))
+
+    def place_stop_loss(self, asset, position_side, stop_price):
+        """Reduce-only stop on the exchange that closes the whole position if price crosses stop_price."""
+        stop_decimal = self._ensure_decimal(stop_price)
+        if stop_decimal is None or stop_decimal <= 0:
+            return None
+
+        contract = self.get_contract(asset.code_name)
+        tick_size = self._ensure_decimal(contract.get('tickSize'))
+        is_long = position_side == FuturesOrder.SIDE_LONG
+        if tick_size and tick_size > 0:
+            # round away from the market so the stop is never tighter than requested
+            stop_decimal = self._quantize_to_step(stop_decimal, tick_size, ROUND_DOWN if is_long else ROUND_UP)
+
+        endpoint = '/api/v1/orders'
+        data = {
+            "clientOid": str(uuid.uuid4()),
+            "side": FuturesOrder.SIDE_SHORT if is_long else FuturesOrder.SIDE_LONG,
+            "symbol": asset.code_name,
+            "type": "market",
+            "stop": "down" if is_long else "up",
+            "stopPriceType": "TP",
+            "stopPrice": self._format_decimal(stop_decimal),
+            "closeOrder": True,
+            "marginMode": "CROSS",
+        }
+        body = json.dumps(data)
+        response = requests.post(
+            url=f'{self.base_url}{endpoint}', headers=self._auth_headers('POST', endpoint, body), data=body
+        )
+        try:
+            response.raise_for_status()
+        except Exception:
+            logger.error(
+                'placing kucoin stop loss failed: status=%s, body=%s',
+                response.status_code,
+                response.text
+            )
+            raise
+        response_data = response.json()
+        logger.info('placing kucoin stop loss success: symbol=%s stop=%s payload=%s',
+                    asset.code_name, data['stopPrice'], response_data)
+        return response_data
+
+    def cancel_stop_orders(self, code_name):
+        endpoint = '/api/v1/stopOrders'
+        request_path = f'{endpoint}?{urlencode({"symbol": code_name})}'
+        response = requests.delete(
+            url=f'{self.base_url}{request_path}', headers=self._auth_headers('DELETE', request_path)
+        )
+        response.raise_for_status()
+        response_data = response.json()
+        logger.info('cancel kucoin stop orders: symbol=%s payload=%s', code_name, response_data)
+        return response_data
 
     def _fetch_top_of_book(self, symbol):
         endpoint = '/api/v1/level2/depth20'
@@ -177,6 +289,15 @@ class KucoinFuturesService(object):
         )
 
     def close_position(self, asset, user, exchange, price=0):
+        result = self._submit_close_order(asset, user, exchange, price)
+        # the position is flat (or never filled): drop the protective stop so it can't hit a later position
+        try:
+            self.cancel_stop_orders(asset.code_name)
+        except Exception as exc:
+            logger.error('cancel kucoin stop orders failed for %s: %s', asset.code_name, exc)
+        return result
+
+    def _submit_close_order(self, asset, user, exchange, price=0):
         position_response = self.get_position(asset.code_name)
         position_data = position_response.get('data') or []
         if isinstance(position_data, dict):
@@ -266,6 +387,11 @@ class KucoinFuturesService(object):
 
         position_response = self.get_position(asset.code_name)
         position_data = position_response.get('data') or []
+        if isinstance(position_data, dict):
+            position_data = [position_data]
+        if not position_data:
+            logger.info('no kucoin position to reduce for %s', asset.code_name)
+            return position_response
         current_qty_raw = position_data[0].get('currentQty')
 
         try:
@@ -595,7 +721,7 @@ class TraderBotService(object):
         return None
 
     @staticmethod
-    def trade_on_strategy(strategies, side, code_name, action, price, order_id=None):
+    def trade_on_strategy(strategies, side, code_name, action, price, order_id=None, size_pct=None, stop_price=None):
         from apps.trader_bots.tasks import (
             CREATE_ORDER_COUNTDOWN,
             close_position_task,
@@ -604,6 +730,14 @@ class TraderBotService(object):
         )
         normalized_action = (action or '').lower()
         percent = TraderBotService._extract_tp_percent(action)
+        if stop_price is not None and normalized_action == 'open':
+            stop_on_wrong_side = (
+                (side == FuturesOrder.SIDE_LONG and stop_price >= float(price))
+                or (side == FuturesOrder.SIDE_SHORT and stop_price <= float(price))
+            )
+            if stop_on_wrong_side:
+                logger.warning('ignoring stop %s on wrong side of %s entry at %s', stop_price, side, price)
+                stop_price = None
         for strategy in strategies:
             if normalized_action == 'open':
                 create_order_task.apply_async(
@@ -615,6 +749,7 @@ class TraderBotService(object):
                         strategy.leverage,
                         float(price)
                     ),
+                    kwargs={'size_pct': size_pct, 'stop_price': stop_price},
                     countdown=CREATE_ORDER_COUNTDOWN
                 )
             elif normalized_action == 'close' or (percent is None and 'close' in normalized_action):
