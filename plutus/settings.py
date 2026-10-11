@@ -13,7 +13,6 @@ from datetime import timedelta
 from pathlib import Path
 
 import dj_database_url
-from celery.schedules import crontab
 from decouple import config, Csv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -99,7 +98,6 @@ if DATABASE_URL:
             'CONN_MAX_AGE': config('CONN_MAX_AGE', default=300, cast=int)
         }
     }
-CELERY_BROKER_URL = f"{config('REDIS_URL', '')}"
 
 CACHES = {
     # 'default': {

@@ -723,7 +723,7 @@ class TraderBotService(object):
     @staticmethod
     def trade_on_strategy(strategies, side, code_name, action, price, order_id=None, size_pct=None, stop_price=None):
         from apps.trader_bots.tasks import (
-            CREATE_ORDER_COUNTDOWN,
+            CREATE_ORDER_DELAY_SECONDS,
             close_position_task,
             create_order_task,
             reduce_position_task,
@@ -738,28 +738,28 @@ class TraderBotService(object):
             if stop_on_wrong_side:
                 logger.warning('ignoring stop %s on wrong side of %s entry at %s', stop_price, side, price)
                 stop_price = None
+        if normalized_action == 'open' and strategies:
+            time.sleep(CREATE_ORDER_DELAY_SECONDS)
         for strategy in strategies:
             if normalized_action == 'open':
-                create_order_task.apply_async(
-                    args=(
-                        strategy.trader_bot.id,
-                        code_name,
-                        strategy.contracts,
-                        side,
-                        strategy.leverage,
-                        float(price)
-                    ),
-                    kwargs={'size_pct': size_pct, 'stop_price': stop_price},
-                    countdown=CREATE_ORDER_COUNTDOWN
+                create_order_task(
+                    strategy.trader_bot.id,
+                    code_name,
+                    strategy.contracts,
+                    side,
+                    strategy.leverage,
+                    float(price),
+                    size_pct=size_pct,
+                    stop_price=stop_price
                 )
             elif normalized_action == 'close' or (percent is None and 'close' in normalized_action):
-                close_position_task.delay(
+                close_position_task(
                     strategy.trader_bot.id,
                     code_name,
                     float(price)
                 )
             elif percent is not None:
-                reduce_position_task.delay(
+                reduce_position_task(
                     strategy.trader_bot.id,
                     code_name,
                     side,

@@ -1,7 +1,5 @@
 import logging
 
-from celery import shared_task
-
 from apps.exchanges.models import ExchangeFuturesAsset
 from apps.orders.models import FuturesOrder
 from apps.trader_bots.models import TraderBot
@@ -9,7 +7,7 @@ from apps.trader_bots.services import AaxService, KucoinFuturesService
 
 logger = logging.getLogger(__name__)
 
-CREATE_ORDER_COUNTDOWN = 6
+CREATE_ORDER_DELAY_SECONDS = 6
 
 
 def _build_exchange_service(bot):
@@ -128,7 +126,6 @@ def update_order_task(bot_id, order_id):
             order.save()
 
 
-@shared_task(name='trader_bots.close_position')
 def close_position_task(bot_id, code_name, price):
     logger.info(f'closing position, bot {bot_id}, {code_name}')
     try:
@@ -140,7 +137,6 @@ def close_position_task(bot_id, code_name, price):
         logger.error(f'close position error bot {bot_id}, {code_name} : {e}')
 
 
-@shared_task(name='trader_bots.create_order')
 def create_order_task(bot_id, code_name, qty, side, leverage, price, size_pct=None, stop_price=None):
     bot = TraderBot.objects.get(id=bot_id)
     logger.info(
@@ -175,7 +171,6 @@ def create_order_task(bot_id, code_name, qty, side, leverage, price, size_pct=No
         logger.error(f'creating order error bot {bot_id}, {code_name} : {e}')
 
 
-@shared_task(name='trader_bots.reduce_position')
 def reduce_position_task(bot_id, code_name, side, percent, leverage, price, action_comment=None, order_id=None):
     logger.info(
         'reducing position, bot:%s, %s, percent:%s, side:%s, order_id:%s',

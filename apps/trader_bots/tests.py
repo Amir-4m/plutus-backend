@@ -108,12 +108,13 @@ class CreateOrderTaskTests(TestCase):
 
 
 class TradeOnStrategyTests(TestCase):
-    @mock.patch('apps.trader_bots.tasks.create_order_task.apply_async')
-    def test_drops_stop_on_wrong_side(self, apply_async):
+    @mock.patch('apps.trader_bots.services.time.sleep')
+    @mock.patch('apps.trader_bots.tasks.create_order_task')
+    def test_drops_stop_on_wrong_side(self, create_order, sleep):
         user_strategy = SimpleNamespace(trader_bot=SimpleNamespace(id=1), contracts=1, leverage=1)
         TraderBotService.trade_on_strategy([user_strategy], 'buy', 'XBTUSDTM', 'open', 60000,
                                            size_pct=10, stop_price=61000)
-        self.assertIsNone(apply_async.call_args.kwargs['kwargs']['stop_price'])
+        self.assertIsNone(create_order.call_args.kwargs['stop_price'])
         TraderBotService.trade_on_strategy([user_strategy], 'sell', 'XBTUSDTM', 'open', 60000,
                                            size_pct=10, stop_price=61000)
-        self.assertEqual(apply_async.call_args.kwargs['kwargs']['stop_price'], 61000)
+        self.assertEqual(create_order.call_args.kwargs['stop_price'], 61000)
