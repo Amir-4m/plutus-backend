@@ -73,8 +73,8 @@ class KucoinFuturesService(object):
         response.raise_for_status()
         return response.json().get('data') or {}
 
-    def calculate_order_size(self, code_name, size_pct, price):
-        """Convert a % of account equity into a number of contracts.
+    def calculate_order_size(self, code_name, size_pct, price, leverage=1):
+        """Convert a % of account equity, used as margin at the given leverage, into a number of contracts.
 
         Returns None when the size cannot be derived for this contract (caller should fall back
         to its fixed size), or Decimal('0') when the position would be smaller than one lot.
@@ -98,13 +98,30 @@ class KucoinFuturesService(object):
             logger.warning('kucoin account equity unavailable for %s: %s', settle_currency, account)
             return None
 
-        notional = equity * size_pct_decimal / Decimal('100')
+        leverage_decimal = self._ensure_decimal(leverage)
+        if leverage_decimal is None or leverage_decimal <= 0:
+            leverage_decimal = Decimal('1')
+        notional = equity * size_pct_decimal / Decimal('100') * leverage_decimal
         size = self._quantize_to_step(notional / (price_decimal * multiplier), lot_size, ROUND_DOWN)
         logger.info(
-            'kucoin order size for %s: equity=%s %s, size_pct=%s, price=%s, multiplier=%s -> %s contracts',
-            code_name, equity, settle_currency, size_pct_decimal, price_decimal, multiplier, size
+            'kucoin order size for %s: equity=%s %s, size_pct=%s, leverage=%s, price=%s, multiplier=%s -> %s contracts',
+            code_name, equity, settle_currency, size_pct_decimal, leverage_decimal, price_decimal, multiplier, size
         )
         return max(size, Decimal('0'))
+
+    def set_cross_leverage(self, code_name, leverage):
+        """In cross margin KuCoin uses the per-symbol cross leverage and ignores the leverage sent with the order."""
+        endpoint = '/api/v2/changeCrossUserLeverage'
+        body = json.dumps({"symbol": code_name, "leverage": str(leverage)})
+        response = requests.post(
+            url=f'{self.base_url}{endpoint}', headers=self._auth_headers('POST', endpoint, body), data=body
+        )
+        response.raise_for_status()
+        response_data = response.json()
+        if str(response_data.get('code')) != '200000':
+            raise ValueError(f'kucoin change cross leverage failed for {code_name}: {response_data}')
+        logger.info('kucoin cross leverage set: symbol=%s leverage=%s payload=%s', code_name, leverage, response_data)
+        return response_data
 
     def place_stop_loss(self, asset, position_side, stop_price):
         """Reduce-only stop on the exchange that closes the whole position if price crosses stop_price."""

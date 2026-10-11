@@ -1,9 +1,11 @@
 import hmac
 import json
 import logging
+import re
+import threading
 
 from django.conf import settings
-from django.db import transaction
+from django.db import connection, transaction
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
@@ -16,6 +18,8 @@ from apps.trader_bots.services import TraderBotService
 
 logger = logging.getLogger(__name__)
 
+SECRET_PATTERN = re.compile(r'("secret"\s*:\s*")(?:\\.|[^"\\])*')
+
 
 def _optional_float(value):
     if value in (None, ''):
@@ -26,14 +30,71 @@ def _optional_float(value):
         return None
 
 
+def _redact_secret(body):
+    # Regex rather than json.loads so malformed payloads are still logged, minus the secret.
+    return SECRET_PATTERN.sub(r'\1***', body.decode('utf-8', errors='replace'))
+
+
+def _run_in_background(payload):
+    threading.Thread(target=_process_webhook, args=(payload,), name='strategy-webhook').start()
+
+
+def _process_webhook(payload):
+    try:
+        with transaction.atomic():
+            _handle_webhook(payload)
+    finally:
+        connection.close()
+
+
+def _handle_webhook(payload):
+    strategy_title = payload.get('strategy')
+    try:
+        strategy = Strategy.objects.get(title=strategy_title, is_enable=True, asset__symbol=payload['symbol'])
+        exchange_asset = ExchangeFuturesAsset.objects.get(asset=strategy.asset, exchange__title=payload['exchange'])
+        pos_side = payload['side']
+        if payload['side'] == 'buy' and payload['action'] == 'close':
+            pos_side = 'sell'
+        elif payload['side'] == 'sell' and payload['action'] == 'close':
+            pos_side = 'buy'
+
+        context = {
+            'symbol': exchange_asset.asset.symbol,
+            'action': f'{payload["action"]} {pos_side} position',
+            'price': payload['price'],
+            'exchange': exchange_asset.exchange.title
+        }
+        AlertService.send_alert(strategy, context)
+        user_strategies = strategy.user_strategies.select_related('trader_bot').filter(
+            is_enable=True,
+            trade=True,
+            trade__isnull=False,
+            trader_bot__exchange=exchange_asset.exchange
+        )
+        TraderBotService.trade_on_strategy(
+            user_strategies,
+            payload['side'],
+            exchange_asset.code_name,
+            payload['action'],
+            payload['price'],
+            payload.get('ID'),
+            size_pct=_optional_float(payload.get('size_pct')),
+            stop_price=_optional_float(payload.get('stop')),
+        )
+
+    except Strategy.DoesNotExist:
+        logger.error(f'webhook, strategy with title {strategy_title} does not exist or is not enable')
+    except Exception as e:
+        logger.error(f'webhook, error send alert: {e}')
+
+
 class WebHookView(View):
     @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
         return super(WebHookView, self).dispatch(request, *args, **kwargs)
 
-    @transaction.atomic
     def post(self, request):
-        logger.info(f'webhook called with data: {str(request.body)}')
+        logger.info(f'webhook called with data: {_redact_secret(request.body)}')
         try:
             payload = json.loads(request.body)
         except (TypeError, ValueError) as e:
@@ -52,43 +113,6 @@ class WebHookView(View):
         else:
             logger.warning('webhook, STRATEGY_WEBHOOK_SECRET is not set; accepting unauthenticated webhook')
 
-        strategy_title = payload.get('strategy')
-        try:
-            strategy = Strategy.objects.get(title=strategy_title, is_enable=True, asset__symbol=payload['symbol'])
-            exchange_asset = ExchangeFuturesAsset.objects.get(asset=strategy.asset, exchange__title=payload['exchange'])
-            pos_side = payload['side']
-            if payload['side'] == 'buy' and payload['action'] == 'close':
-                pos_side = 'sell'
-            elif payload['side'] == 'sell' and payload['action'] == 'close':
-                pos_side = 'buy'
-
-            context = {
-                'symbol': exchange_asset.asset.symbol,
-                'action': f'{payload["action"]} {pos_side} position',
-                'price': payload['price'],
-                'exchange': exchange_asset.exchange.title
-            }
-            AlertService.send_alert(strategy, context)
-            user_strategies = strategy.user_strategies.select_related('trader_bot').filter(
-                is_enable=True,
-                trade=True,
-                trade__isnull=False,
-                trader_bot__exchange=exchange_asset.exchange
-            )
-            TraderBotService.trade_on_strategy(
-                user_strategies,
-                payload['side'],
-                exchange_asset.code_name,
-                payload['action'],
-                payload['price'],
-                payload.get('ID'),
-                size_pct=_optional_float(payload.get('size_pct')),
-                stop_price=_optional_float(payload.get('stop')),
-            )
-
-        except Strategy.DoesNotExist:
-            logger.error(f'webhook, strategy with title {strategy_title} does not exist or is not enable')
-        except Exception as e:
-            logger.error(f'webhook, error send alert: {e}')
-
+        # TradingView drops the webhook if we don't answer within ~3s, so do the work after responding.
+        _run_in_background(payload)
         return HttpResponse('')

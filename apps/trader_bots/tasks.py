@@ -147,8 +147,13 @@ def create_order_task(bot_id, code_name, qty, side, leverage, price, size_pct=No
         asset = ExchangeFuturesAsset.objects.get(code_name=code_name, exchange_id=bot.exchange_id)
         # _close_position(bot, code_name, price)
         exchange_service = _build_exchange_service(bot)
+        if hasattr(exchange_service, 'set_cross_leverage'):
+            try:
+                exchange_service.set_cross_leverage(code_name, leverage)
+            except Exception as e:
+                logger.error(f'setting leverage {leverage} error bot {bot_id}, {code_name} : {e}')
         if size_pct is not None and hasattr(exchange_service, 'calculate_order_size'):
-            sized_qty = exchange_service.calculate_order_size(code_name, size_pct, price)
+            sized_qty = exchange_service.calculate_order_size(code_name, size_pct, price, leverage)
             if sized_qty is None:
                 logger.warning(f'creating order, bot {bot_id}, {code_name}: cannot size by equity, using {qty} contracts')
             elif sized_qty <= 0:

@@ -32,6 +32,28 @@ class KucoinFuturesServiceTests(TestCase):
             # 10000 * 0.5% = 50 USDT -> below one contract
             self.assertEqual(self.service.calculate_order_size('XBTUSDTM', 0.5, 60000), Decimal('0'))
 
+    def test_calculate_order_size_applies_leverage(self):
+        with mock.patch.object(self.service, 'get_contract', return_value=CONTRACT), \
+                mock.patch.object(self.service, 'get_account_futures',
+                                  return_value={'data': {'accountEquity': 200}}):
+            # 200 * 31.35% = 62.7 USDT margin * 10 = 627 USDT / (83000 * 0.001) = 7.55 -> 7 contracts
+            self.assertEqual(self.service.calculate_order_size('XBTUSDTM', 31.35, 83000, 10), Decimal('7'))
+            # same signal at 1x is below one contract
+            self.assertEqual(self.service.calculate_order_size('XBTUSDTM', 31.35, 83000, 1), Decimal('0'))
+
+    @mock.patch('apps.trader_bots.services.requests.post')
+    def test_set_cross_leverage(self, post):
+        post.return_value = _response({'code': '200000', 'data': True})
+        self.service.set_cross_leverage('XBTUSDTM', 10)
+        self.assertTrue(post.call_args.kwargs['url'].endswith('/api/v2/changeCrossUserLeverage'))
+        self.assertEqual(json.loads(post.call_args.kwargs['data']), {'symbol': 'XBTUSDTM', 'leverage': '10'})
+
+    @mock.patch('apps.trader_bots.services.requests.post')
+    def test_set_cross_leverage_raises_on_error_code(self, post):
+        post.return_value = _response({'code': '300016', 'msg': 'leverage invalid'})
+        with self.assertRaises(ValueError):
+            self.service.set_cross_leverage('XBTUSDTM', 10)
+
     def test_calculate_order_size_inverse_contract_returns_none(self):
         with mock.patch.object(self.service, 'get_contract', return_value={**CONTRACT, 'isInverse': True}):
             self.assertIsNone(self.service.calculate_order_size('XBTUSDM', 20, 60000))
@@ -72,6 +94,9 @@ class KucoinFuturesServiceTests(TestCase):
 
 class CreateOrderTaskTests(TestCase):
     def setUp(self):
+        patcher = mock.patch.object(KucoinFuturesService, 'set_cross_leverage')
+        self.set_leverage = patcher.start()
+        self.addCleanup(patcher.stop)
         user = User.objects.create(username='u', email='u@example.com')
         exchange = Exchange.objects.create(title='kucoin')
         asset = Asset.objects.create(symbol='BTC')
@@ -85,7 +110,9 @@ class CreateOrderTaskTests(TestCase):
     @mock.patch.object(KucoinFuturesService, 'calculate_order_size', return_value=Decimal('33'))
     def test_uses_equity_size_and_places_stop(self, size, create, cancel, stop):
         create.return_value = SimpleNamespace(order_id='abc')
-        create_order_task(self.bot.id, 'XBTUSDTM', 1, 'buy', 1, 60000, size_pct=20, stop_price=58000)
+        create_order_task(self.bot.id, 'XBTUSDTM', 1, 'buy', 10, 60000, size_pct=20, stop_price=58000)
+        self.set_leverage.assert_called_once_with('XBTUSDTM', 10)
+        size.assert_called_once_with('XBTUSDTM', 20, 60000, 10)
         self.assertEqual(create.call_args.args[1], Decimal('33'))
         cancel.assert_called_once_with('XBTUSDTM')
         self.assertEqual(stop.call_args.args[1:], ('buy', 58000))
@@ -95,6 +122,14 @@ class CreateOrderTaskTests(TestCase):
     def test_skips_order_below_one_lot(self, size, create):
         create_order_task(self.bot.id, 'XBTUSDTM', 1, 'buy', 1, 60000, size_pct=0.1)
         create.assert_not_called()
+
+    @mock.patch.object(KucoinFuturesService, 'create_order')
+    @mock.patch.object(KucoinFuturesService, 'calculate_order_size', return_value=Decimal('7'))
+    def test_leverage_failure_still_places_order(self, size, create):
+        self.set_leverage.side_effect = ValueError('rejected')
+        create.return_value = SimpleNamespace(order_id='abc')
+        create_order_task(self.bot.id, 'XBTUSDTM', 1, 'buy', 10, 60000, size_pct=30)
+        self.assertEqual(create.call_args.args[1], Decimal('7'))
 
     @mock.patch.object(KucoinFuturesService, 'place_stop_loss')
     @mock.patch.object(KucoinFuturesService, 'create_order')
